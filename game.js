@@ -72,21 +72,20 @@ if (typeof Phaser === 'undefined') {
                 this.shopHUD.add(button);
             });
 
-            // Power Bar (Left)
             this.powerBarOutline = this.add.rectangle(20, 400, 20, 200, 0xffffff);
-            this.powerBarOutline.setOrigin(0, 1); // Anchor at bottom
+            this.powerBarOutline.setOrigin(0, 1);
             this.powerBar = this.add.graphics();
             this.add.text(20, 190, 'Power', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5);
             this.updatePowerBar();
 
-            // Heat Bar (Right)
             this.heatBarOutline = this.add.rectangle(780, 400, 20, 200, 0xffffff);
-            this.heatBarOutline.setOrigin(0, 1); // Anchor at bottom
+            this.heatBarOutline.setOrigin(0, 1);
             this.heatBar = this.add.graphics();
             this.add.text(780, 190, 'Heat', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5);
             this.updateHeatBar();
 
-            this.builtBuildings = [];
+            this.builtBuildings = { offices: [], servers: [], solar_panels: [], cooling_systems: [] };
+            this.officeGroups = [];
 
             this.time.addEvent({
                 delay: 1000,
@@ -117,7 +116,6 @@ if (typeof Phaser === 'undefined') {
                 return;
             }
 
-            // Power check (skip for first office)
             const netElectricity = this.electricityGenerated - this.electricityUsed;
             if (this.offices > 0 && (type === 'server_rack' || type === 'cooling_system' || type === 'office') && netElectricity + buildingData.electricity < 0) {
                 this.showPopup('Not enough electricity! Buy more solar panels.');
@@ -136,28 +134,50 @@ if (typeof Phaser === 'undefined') {
             } else {
                 this.electricityGenerated += buildingData.electricity;
             }
-            this.computingPower += buildingData.computing;
+            this.computingPower += buildingData.computing || 0;
             this.heatLevel = Math.max(0, newHeat);
 
             if (type === 'office') this.offices++;
             if (type === 'server_rack') this.servers++;
 
-            const buildingWidth = 64;
-            const startX = 266;
-            const maxBuildings = Math.floor((533 - startX) / buildingWidth);
-            const xPos = startX + (this.builtBuildings.length % maxBuildings) * buildingWidth;
-            const yPos = 300;
+            // Layout in groups
+            const groupWidth = 100; // Space per group
+            const baseX = 200; // Start groups left of center
+            const officeY = 150; // Top of group
+            const scale = 1; // Quarter of shop size (4 -> 1)
 
-            const building = this.add.sprite(xPos, yPos, buildingData.sprite).setScale(4);
-            this.builtBuildings.push(building);
+            if (type === 'office') {
+                const groupX = baseX + (this.officeGroups.length * groupWidth);
+                const office = this.add.sprite(groupX + 32, officeY, 'office').setScale(scale);
+                this.builtBuildings.offices.push(office);
+                this.officeGroups.push({ x: groupX, servers: [], solar_panels: [], cooling_systems: [] });
+            } else {
+                const group = this.officeGroups[this.offices - 1]; // Latest office group
+                if (type === 'server_rack' && group.servers.length < 3) {
+                    const yPos = officeY + 32 + (group.servers.length * 32);
+                    const server = this.add.sprite(group.x + 32, yPos, 'server_rack').setScale(scale);
+                    group.servers.push(server);
+                    this.builtBuildings.servers.push(server);
+                } else if (type === 'solar_panel') {
+                    const yPos = officeY + 128 + (group.solar_panels.length * 32);
+                    const solar = this.add.sprite(group.x + 32, yPos, 'solar_panel').setScale(scale);
+                    group.solar_panels.push(solar);
+                    this.builtBuildings.solar_panels.push(solar);
+                } else if (type === 'cooling_system') {
+                    const yPos = officeY + 192 + (group.cooling_systems.length * 32);
+                    const cooling = this.add.sprite(group.x + 32, yPos, 'cooling_system').setScale(scale);
+                    group.cooling_systems.push(cooling);
+                    this.builtBuildings.cooling_systems.push(cooling);
+                }
+            }
 
             this.updatePowerBar();
             this.updateHeatBar();
         }
 
         updateResources() {
-            this.budget += this.aiAbility * 10;
-            this.aiAbility += this.computingPower * 0.01;
+            this.budget += Math.min(this.aiAbility * 10, 10000); // Cap income to prevent overflow
+            this.aiAbility = Math.min(this.aiAbility + (this.computingPower * 0.01), 1000); // Cap AI ability
             if (this.aiAbility > 50) {
                 const chance = (this.aiAbility - 50) / 100;
                 if (Math.random() < chance) {
@@ -175,7 +195,7 @@ if (typeof Phaser === 'undefined') {
 
             this.powerBar.clear();
             this.powerBar.fillStyle(color, 1);
-            this.powerBar.fillRect(20, 400 - barHeight, 16, barHeight); // Grow upward from y=400
+            this.powerBar.fillRect(20, 400 - barHeight, 16, barHeight);
         }
 
         updateHeatBar() {
@@ -185,7 +205,7 @@ if (typeof Phaser === 'undefined') {
 
             this.heatBar.clear();
             this.heatBar.fillStyle(color, 1);
-            this.heatBar.fillRect(780, 400 - barHeight, 16, barHeight); // Grow upward from y=400
+            this.heatBar.fillRect(780, 400 - barHeight, 16, barHeight);
         }
 
         triggerSentience() {
@@ -226,11 +246,11 @@ if (typeof Phaser === 'undefined') {
 
         update() {
             const mainScene = this.scene.get('MainScene');
-            this.budgetText.setText(`Budget: $${mainScene.budget.toFixed(0)}`);
-            this.computingText.setText(`Computing Power: ${mainScene.computingPower.toFixed(0)} units`);
+            this.budgetText.setText(`Budget: $${Math.floor(mainScene.budget)}`);
+            this.computingText.setText(`Computing Power: ${Math.floor(mainScene.computingPower)} units`);
             this.electricityText.setText(`Electricity: ${mainScene.electricityGenerated - mainScene.electricityUsed} kW`);
             this.aiText.setText(`AI Ability: ${mainScene.aiAbility.toFixed(2)}`);
-            this.heatText.setText(`Heat: ${mainScene.heatLevel.toFixed(0)}`);
+            this.heatText.setText(`Heat: ${Math.floor(mainScene.heatLevel)}`);
         }
     }
 
