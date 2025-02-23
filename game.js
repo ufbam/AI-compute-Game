@@ -8,10 +8,16 @@ if (typeof Phaser === 'undefined') {
 
         preload() {
             this.load.image('desert_backdrop', 'assets/desert_backdrop.png');
+            // Original 16x16 for desert
             this.load.image('office', 'assets/office.png');
             this.load.image('server_rack', 'assets/server_rack.png');
             this.load.image('solar_panel', 'assets/solar_panel.png');
             this.load.image('cooling_system', 'assets/cooling_system.png');
+            // High-res 1024x1024 for shop
+            this.load.image('office_high', 'assets/office_high.png');
+            this.load.image('server_rack_high', 'assets/server_rack_high.png');
+            this.load.image('solar_panel_high', 'assets/solar_panel_high.png');
+            this.load.image('cooling_system_high', 'assets/cooling_system_high.png');
         }
 
         create() {
@@ -39,10 +45,10 @@ if (typeof Phaser === 'undefined') {
             this.servers = 0;
 
             this.buildings = {
-                office: { cost: 2000, electricity: -10, computing: 0, sprite: 'office', tooltip: 'Required first. Allows 3 servers per office.' },
-                server_rack: { cost: 1000, electricity: -5, computing: 10, heat: 10, sprite: 'server_rack', tooltip: 'Boosts computing power, uses power and generates heat.' },
-                solar_panel: { cost: 500, electricity: 10, computing: 0, sprite: 'solar_panel', tooltip: 'Generates electricity to power servers.' },
-                cooling_system: { cost: 1500, electricity: -5, heat: -15, sprite: 'cooling_system', tooltip: 'Reduces heat from servers.' }
+                office: { cost: 2000, electricity: -10, computing: 0, sprite: 'office', shopSprite: 'office_high', tooltip: 'Required first. Allows 3 servers per office.' },
+                server_rack: { cost: 1000, electricity: -5, computing: 10, heat: 10, sprite: 'server_rack', shopSprite: 'server_rack_high', tooltip: 'Boosts computing power, uses power and generates heat.' },
+                solar_panel: { cost: 500, electricity: 10, computing: 0, sprite: 'solar_panel', shopSprite: 'solar_panel_high', tooltip: 'Generates electricity to power servers.' },
+                cooling_system: { cost: 1500, electricity: -5, heat: -15, sprite: 'cooling_system', shopSprite: 'cooling_system_high', tooltip: 'Reduces heat from servers.' }
             };
 
             const shopY = 530;
@@ -59,8 +65,8 @@ if (typeof Phaser === 'undefined') {
 
             shopItems.forEach(item => {
                 const buildingData = this.buildings[item.type];
-                const button = this.add.sprite(item.x, shopY, buildingData.sprite)
-                    .setScale(4)
+                const button = this.add.sprite(item.x, shopY, buildingData.shopSprite)
+                    .setScale(64 / 1024) // Scale 1024x1024 to 64x64
                     .setInteractive({ useHandCursor: true })
                     .on('pointerdown', () => this.buyBuilding(item.type))
                     .on('pointerover', () => this.showTooltip(item.x, shopY - 80, buildingData.tooltip))
@@ -140,11 +146,10 @@ if (typeof Phaser === 'undefined') {
             if (type === 'office') this.offices++;
             if (type === 'server_rack') this.servers++;
 
-            // Layout in groups
-            const groupWidth = 100; // Space per group
-            const baseX = 200; // Start groups left of center
-            const officeY = 150; // Top of group
-            const scale = 1; // Quarter of shop size (4 -> 1)
+            const groupWidth = 100;
+            const baseX = 200;
+            const officeY = 150;
+            const scale = 1;
 
             if (type === 'office') {
                 const groupX = baseX + (this.officeGroups.length * groupWidth);
@@ -152,7 +157,7 @@ if (typeof Phaser === 'undefined') {
                 this.builtBuildings.offices.push(office);
                 this.officeGroups.push({ x: groupX, servers: [], solar_panels: [], cooling_systems: [] });
             } else {
-                const group = this.officeGroups[this.offices - 1]; // Latest office group
+                const group = this.officeGroups[this.offices - 1];
                 if (type === 'server_rack' && group.servers.length < 3) {
                     const yPos = officeY + 32 + (group.servers.length * 32);
                     const server = this.add.sprite(group.x + 32, yPos, 'server_rack').setScale(scale);
@@ -176,8 +181,8 @@ if (typeof Phaser === 'undefined') {
         }
 
         updateResources() {
-            this.budget += Math.min(this.aiAbility * 10, 10000); // Cap income to prevent overflow
-            this.aiAbility = Math.min(this.aiAbility + (this.computingPower * 0.01), 1000); // Cap AI ability
+            this.budget += Math.min(this.aiAbility * 10, 10000);
+            this.aiAbility = Math.min(this.aiAbility + (this.computingPower * 0.01), 1000);
             if (this.aiAbility > 50) {
                 const chance = (this.aiAbility - 50) / 100;
                 if (Math.random() < chance) {
