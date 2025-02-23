@@ -148,4 +148,100 @@ if (typeof Phaser === 'undefined') {
             const xPos = startX + (this.builtBuildings.length % maxBuildings) * buildingWidth;
             const yPos = 300;
 
-            const building = this.add.sprite
+            const building = this.add.sprite(xPos, yPos, buildingData.sprite).setScale(4);
+            this.builtBuildings.push(building);
+
+            this.updatePowerBar();
+            this.updateHeatBar();
+        }
+
+        updateResources() {
+            this.budget += this.aiAbility * 10;
+            this.aiAbility += this.computingPower * 0.01;
+            if (this.aiAbility > 50) {
+                const chance = (this.aiAbility - 50) / 100;
+                if (Math.random() < chance) {
+                    this.triggerSentience();
+                }
+            }
+            this.updatePowerBar();
+            this.updateHeatBar();
+        }
+
+        updatePowerBar() {
+            const usagePercentage = Math.min(this.electricityUsed / this.maxElectricity, 1);
+            const barHeight = Math.max(0, 200 * usagePercentage);
+            const color = usagePercentage > 0.8 ? 0xff0000 : 0x00ff00;
+
+            this.powerBar.clear();
+            this.powerBar.fillStyle(color, 1);
+            this.powerBar.fillRect(20, 400 - barHeight, 16, barHeight); // Grow upward from y=400
+        }
+
+        updateHeatBar() {
+            const heatPercentage = Math.min(this.heatLevel / this.maxHeat, 1);
+            const barHeight = Math.max(0, 200 * heatPercentage);
+            const color = heatPercentage > 0.8 ? 0xff0000 : 0xffa500;
+
+            this.heatBar.clear();
+            this.heatBar.fillStyle(color, 1);
+            this.heatBar.fillRect(780, 400 - barHeight, 16, barHeight); // Grow upward from y=400
+        }
+
+        triggerSentience() {
+            console.log('AI has become sentient! Game effects to be implemented.');
+        }
+
+        showTooltip(x, y, text) {
+            if (this.tooltip) this.tooltip.destroy();
+            this.tooltip = this.add.text(x, y, text, { font: '14px Arial', fill: '#ffffff', backgroundColor: '#333333' }).setOrigin(0.5);
+        }
+
+        hideTooltip() {
+            if (this.tooltip) {
+                this.tooltip.destroy();
+                this.tooltip = null;
+            }
+        }
+
+        showPopup(message) {
+            this.popup.setText(message);
+            this.popup.setVisible(true);
+            this.time.delayedCall(2000, () => this.popup.setVisible(false), [], this);
+        }
+    }
+
+    class HUDScene extends Phaser.Scene {
+        constructor() {
+            super('HUDScene');
+        }
+
+        create() {
+            this.budgetText = this.add.text(60, 10, 'Budget: $10000', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
+            this.computingText = this.add.text(60, 40, 'Computing Power: 0 units', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
+            this.electricityText = this.add.text(60, 70, 'Electricity: 0 kW', { font: '16px Arial', fill: '#cccccc' });
+            this.aiText = this.add.text(60, 90, 'AI Ability: 0', { font: '16px Arial', fill: '#cccccc' });
+            this.heatText = this.add.text(60, 110, 'Heat: 0', { font: '16px Arial', fill: '#cccccc' });
+        }
+
+        update() {
+            const mainScene = this.scene.get('MainScene');
+            this.budgetText.setText(`Budget: $${mainScene.budget.toFixed(0)}`);
+            this.computingText.setText(`Computing Power: ${mainScene.computingPower.toFixed(0)} units`);
+            this.electricityText.setText(`Electricity: ${mainScene.electricityGenerated - mainScene.electricityUsed} kW`);
+            this.aiText.setText(`AI Ability: ${mainScene.aiAbility.toFixed(2)}`);
+            this.heatText.setText(`Heat: ${mainScene.heatLevel.toFixed(0)}`);
+        }
+    }
+
+    const config = {
+        type: Phaser.AUTO,
+        width: 800,
+        height: 600,
+        scene: [BootScene, MainScene, HUDScene],
+        pixelArt: true,
+        backgroundColor: '#000000'
+    };
+
+    const game = new Phaser.Game(config);
+}
