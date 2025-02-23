@@ -7,7 +7,7 @@ if (typeof Phaser === 'undefined') {
         }
 
         preload() {
-            this.load.image('desert_backdrop', 'assets/desert_backdrop.png'); // New high-res backdrop
+            this.load.image('desert_backdrop', 'assets/desert_backdrop.png');
             this.load.image('office', 'assets/office.png');
             this.load.image('server_rack', 'assets/server_rack.png');
             this.load.image('solar_panel', 'assets/solar_panel.png');
@@ -25,23 +25,16 @@ if (typeof Phaser === 'undefined') {
         }
 
         create() {
-            // Add single high-res desert backdrop (800x600)
+            // Desert backdrop
             this.add.image(400, 300, 'desert_backdrop').setOrigin(0.5, 0.5);
 
-            // Grid for building placement (still 16x16 units, but scaled visually)
-            this.grid = [];
-            for (let y = 0; y < 38; y++) {
-                this.grid[y] = [];
-                for (let x = 0; x < 50; x++) {
-                    this.grid[y][x] = null;
-                }
-            }
-
+            // Resources
             this.budget = 10000;
             this.electricity = 0;
             this.computingPower = 0;
             this.aiAbility = 0;
 
+            // Building definitions
             this.buildings = {
                 office: { cost: 2000, electricity: -10, computing: 0, sprite: 'office', tooltip: 'Base of operations, enables staff hires.' },
                 server_rack: { cost: 1000, electricity: -5, computing: 10, sprite: 'server_rack', tooltip: 'Increases computing power for AI training.' },
@@ -49,9 +42,12 @@ if (typeof Phaser === 'undefined') {
                 cooling_system: { cost: 1500, electricity: -5, computing: 0, sprite: 'cooling_system', tooltip: 'Reduces electricity use of nearby buildings.' }
             };
 
-            // Shop HUD at the bottom
+            // Shop HUD Panel
+            const shopY = 480;
+            const panel = this.add.rectangle(400, shopY + 60, 800, 150, 0x333333); // Gray panel
+            panel.setOrigin(0.5, 0.5);
             this.shopHUD = this.add.group();
-            const shopY = 500; // Position near bottom
+
             const shopItems = [
                 { type: 'office', x: 100 },
                 { type: 'server_rack', x: 250 },
@@ -61,22 +57,23 @@ if (typeof Phaser === 'undefined') {
 
             shopItems.forEach(item => {
                 const buildingData = this.buildings[item.type];
-                // Scaled-up sprite (4x size, 64x64 pixels)
                 const button = this.add.sprite(item.x, shopY, buildingData.sprite)
                     .setScale(4)
-                    .setInteractive()
-                    .on('pointerdown', () => this.selectBuilding(item.type))
+                    .setInteractive({ useHandCursor: true })
+                    .on('pointerdown', () => this.buyBuilding(item.type))
                     .on('pointerover', () => this.showTooltip(item.x, shopY - 80, buildingData.tooltip))
                     .on('pointerout', () => this.hideTooltip());
 
-                // Label and cost
+                // Labels and costs on the panel
                 this.add.text(item.x, shopY + 40, item.type.replace('_', ' '), { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5);
                 this.add.text(item.x, shopY + 60, `$${buildingData.cost}`, { font: '14px Arial', fill: '#ffff00' }).setOrigin(0.5);
 
                 this.shopHUD.add(button);
             });
 
-            this.input.on('pointerdown', this.placeBuilding, this);
+            // Track built buildings
+            this.builtBuildings = [];
+            this.nextPositionIndex = 0;
 
             this.time.addEvent({
                 delay: 1000,
@@ -88,28 +85,31 @@ if (typeof Phaser === 'undefined') {
             this.scene.launch('HUDScene');
         }
 
-        selectBuilding(type) {
-            this.selectedBuilding = type;
-        }
-
-        placeBuilding(pointer) {
-            if (!this.selectedBuilding || pointer.y > 450) return; // Avoid placing in shop HUD area
-            const buildingData = this.buildings[this.selectedBuilding];
+        buyBuilding(type) {
+            const buildingData = this.buildings[type];
             if (this.budget < buildingData.cost) {
                 console.log('Not enough budget!');
                 return;
             }
 
-            const x = Math.floor(pointer.x / 16);
-            const y = Math.floor(pointer.y / 16);
+            // Deduct cost and update resources
+            this.budget -= buildingData.cost;
+            this.electricity += buildingData.electricity;
+            this.computingPower += buildingData.computing;
 
-            if (x >= 0 && x < 50 && y >= 0 && y < 38 && this.grid[y][x] === null) {
-                const building = this.add.sprite(x * 16 + 8, y * 16 + 8, buildingData.sprite).setScale(4);
-                this.grid[y][x] = { type: this.selectedBuilding, sprite: building };
-                this.budget -= buildingData.cost;
-                this.electricity += buildingData.electricity;
-                this.computingPower += buildingData.computing;
-            }
+            // Place building in the desert center
+            const positions = [
+                { x: 350, y: 250 }, { x: 450, y: 250 }, // Row 1
+                { x: 300, y: 350 }, { x: 400, y: 350 }, { x: 500, y: 350 }, // Row 2
+                { x: 350, y: 450 }, { x: 450, y: 450 }  // Row 3
+            ];
+
+            const pos = positions[this.nextPositionIndex % positions.length];
+            const building = this.add.sprite(pos.x, pos.y, buildingData.sprite).setScale(4);
+            this.builtBuildings.push(building);
+            this.nextPositionIndex++;
+
+            console.log(`Bought ${type} at (${pos.x}, ${pos.y})`);
         }
 
         updateResources() {
@@ -146,10 +146,8 @@ if (typeof Phaser === 'undefined') {
         }
 
         create() {
-            // Bigger, bolder fonts for key stats
             this.budgetText = this.add.text(10, 10, 'Budget: $10000', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
             this.computingText = this.add.text(10, 40, 'Computing Power: 0 units', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
-            // Smaller, simpler fonts for secondary stats
             this.electricityText = this.add.text(10, 70, 'Electricity: 0 kW', { font: '16px Arial', fill: '#cccccc' });
             this.aiText = this.add.text(10, 90, 'AI Ability: 0', { font: '16px Arial', fill: '#cccccc' });
         }
