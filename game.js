@@ -81,18 +81,18 @@ if (typeof Phaser === 'undefined') {
                 this.shopHUD.add(button);
             });
 
-            // HUD Panel at Top
-            const hudY = 30;
-            const hudPanel = this.add.rectangle(400, hudY + 60, 800, 120, 0x333333);
+            // HUD Panel at Top (thinner, at y=0)
+            const hudY = 0;
+            const hudPanel = this.add.rectangle(400, hudY + 20, 800, 40, 0x333333);
             hudPanel.setOrigin(0.5, 0.5);
 
-            this.powerBarOutline = this.add.rectangle(20, 400, 20, 200, 0xffffff, 2); // Thin stroke (lineWidth=2)
+            this.powerBarOutline = this.add.rectangle(20, 400, 20, 200, 0xffffff, 2); // Thin stroke
             this.powerBarOutline.setOrigin(0, 1);
             this.powerBar = this.add.graphics();
             this.add.text(20, 610, 'Power', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5); // Label at bottom
             this.updatePowerBar();
 
-            this.heatBarOutline = this.add.rectangle(760, 400, 20, 200, 0xffffff, 2); // Moved to x=760, thin stroke
+            this.heatBarOutline = this.add.rectangle(760, 400, 20, 200, 0xffffff, 2); // Thin stroke
             this.heatBarOutline.setOrigin(0, 1);
             this.heatBar = this.add.graphics();
             this.add.text(760, 610, 'Heat', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5); // Label at bottom
@@ -254,20 +254,20 @@ if (typeof Phaser === 'undefined') {
         }
 
         create() {
-            // All bold, 24px Arial on gray strip
+            // All bold, 24px Arial on thinner strip
             this.budgetText = this.add.text(20, 20, 'Budget: $10000', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
-            this.computingText = this.add.text(220, 20, 'Computing Power: 0 units', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
-            this.electricityText = this.add.text(420, 20, 'Electricity: 0 kW', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
-            this.aiText = this.add.text(620, 20, 'AI Ability: 0', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
+            this.computingText = this.add.text(200, 20, 'Computing: 0 units', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
+            this.electricityText = this.add.text(400, 20, 'Electricity: 0 kW', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
+            this.aiText = this.add.text(600, 20, 'AI: 0', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
             this.heatText = this.add.text(740, 20, 'Heat: 0', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
         }
 
         update() {
             const mainScene = this.scene.get('MainScene');
             this.budgetText.setText(`Budget: $${Math.floor(mainScene.budget)}`);
-            this.computingText.setText(`Computing Power: ${Math.floor(mainScene.computingPower)} units`);
+            this.computingText.setText(`Computing: ${Math.floor(mainScene.computingPower)} units`);
             this.electricityText.setText(`Electricity: ${mainScene.electricityGenerated - mainScene.electricityUsed} kW`);
-            this.aiText.setText(`AI Ability: ${mainScene.aiAbility.toFixed(2)}`);
+            this.aiText.setText(`AI: ${mainScene.aiAbility.toFixed(2)}`);
             this.heatText.setText(`Heat: ${Math.floor(mainScene.heatLevel)}`);
         }
     }
