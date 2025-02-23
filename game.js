@@ -30,7 +30,8 @@ if (typeof Phaser === 'undefined') {
 
             // Resources
             this.budget = 10000;
-            this.electricity = 0;
+            this.electricityGenerated = 0;
+            this.electricityUsed = 0;
             this.computingPower = 0;
             this.aiAbility = 0;
 
@@ -43,8 +44,8 @@ if (typeof Phaser === 'undefined') {
             };
 
             // Shop HUD Panel
-            const shopY = 480;
-            const panel = this.add.rectangle(400, shopY + 60, 800, 150, 0x333333); // Gray panel
+            const shopY = 530;
+            const panel = this.add.rectangle(400, shopY + 50, 800, 140, 0x333333);
             panel.setOrigin(0.5, 0.5);
             this.shopHUD = this.add.group();
 
@@ -64,16 +65,21 @@ if (typeof Phaser === 'undefined') {
                     .on('pointerover', () => this.showTooltip(item.x, shopY - 80, buildingData.tooltip))
                     .on('pointerout', () => this.hideTooltip());
 
-                // Labels and costs on the panel
                 this.add.text(item.x, shopY + 40, item.type.replace('_', ' '), { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5);
                 this.add.text(item.x, shopY + 60, `$${buildingData.cost}`, { font: '14px Arial', fill: '#ffff00' }).setOrigin(0.5);
 
                 this.shopHUD.add(button);
             });
 
+            // Power Usage Bar
+            this.maxElectricity = 50;
+            this.powerBarOutline = this.add.rectangle(20, 300, 20, 200, 0xffffff); // Outline
+            this.powerBarOutline.setOrigin(0, 0.5);
+            this.powerBar = this.add.rectangle(20, 300, 16, 0, 0x00ff00); // Fill (starts at 0 height)
+            this.powerBar.setOrigin(0, 0.5);
+
             // Track built buildings
             this.builtBuildings = [];
-            this.nextPositionIndex = 0;
 
             this.time.addEvent({
                 delay: 1000,
@@ -92,24 +98,25 @@ if (typeof Phaser === 'undefined') {
                 return;
             }
 
-            // Deduct cost and update resources
             this.budget -= buildingData.cost;
-            this.electricity += buildingData.electricity;
+            if (buildingData.electricity < 0) {
+                this.electricityUsed += Math.abs(buildingData.electricity);
+            } else {
+                this.electricityGenerated += buildingData.electricity;
+            }
             this.computingPower += buildingData.computing;
 
-            // Place building in the desert center
-            const positions = [
-                { x: 350, y: 250 }, { x: 450, y: 250 }, // Row 1
-                { x: 300, y: 350 }, { x: 400, y: 350 }, { x: 500, y: 350 }, // Row 2
-                { x: 350, y: 450 }, { x: 450, y: 450 }  // Row 3
-            ];
+            // Place building in middle third strip (x: 266-533)
+            const buildingWidth = 64;
+            const startX = 266;
+            const maxBuildings = Math.floor((533 - startX) / buildingWidth);
+            const xPos = startX + (this.builtBuildings.length % maxBuildings) * buildingWidth;
+            const yPos = 300;
 
-            const pos = positions[this.nextPositionIndex % positions.length];
-            const building = this.add.sprite(pos.x, pos.y, buildingData.sprite).setScale(4);
+            const building = this.add.sprite(xPos, yPos, buildingData.sprite).setScale(4);
             this.builtBuildings.push(building);
-            this.nextPositionIndex++;
 
-            console.log(`Bought ${type} at (${pos.x}, ${pos.y})`);
+            this.updatePowerBar();
         }
 
         updateResources() {
@@ -121,6 +128,15 @@ if (typeof Phaser === 'undefined') {
                     this.triggerSentience();
                 }
             }
+            this.updatePowerBar();
+        }
+
+        updatePowerBar() {
+            const usagePercentage = Math.min(this.electricityUsed / this.maxElectricity, 1);
+            const barHeight = Math.max(0, 200 * usagePercentage); // Ensure non-negative
+            this.powerBar.displayHeight = barHeight; // Use displayHeight to scale visually
+            this.powerBar.y = 300 - (barHeight / 2); // Grow upward from center
+            this.powerBar.fillColor = usagePercentage > 0.8 ? 0xff0000 : 0x00ff00;
         }
 
         triggerSentience() {
@@ -146,17 +162,17 @@ if (typeof Phaser === 'undefined') {
         }
 
         create() {
-            this.budgetText = this.add.text(10, 10, 'Budget: $10000', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
-            this.computingText = this.add.text(10, 40, 'Computing Power: 0 units', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
-            this.electricityText = this.add.text(10, 70, 'Electricity: 0 kW', { font: '16px Arial', fill: '#cccccc' });
-            this.aiText = this.add.text(10, 90, 'AI Ability: 0', { font: '16px Arial', fill: '#cccccc' });
+            this.budgetText = this.add.text(40, 10, 'Budget: $10000', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
+            this.computingText = this.add.text(40, 40, 'Computing Power: 0 units', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
+            this.electricityText = this.add.text(40, 70, 'Electricity: 0 kW', { font: '16px Arial', fill: '#cccccc' });
+            this.aiText = this.add.text(40, 90, 'AI Ability: 0', { font: '16px Arial', fill: '#cccccc' });
         }
 
         update() {
             const mainScene = this.scene.get('MainScene');
             this.budgetText.setText(`Budget: $${mainScene.budget.toFixed(0)}`);
             this.computingText.setText(`Computing Power: ${mainScene.computingPower.toFixed(0)} units`);
-            this.electricityText.setText(`Electricity: ${mainScene.electricity.toFixed(0)} kW`);
+            this.electricityText.setText(`Electricity: ${mainScene.electricityGenerated - mainScene.electricityUsed} kW`);
             this.aiText.setText(`AI Ability: ${mainScene.aiAbility.toFixed(2)}`);
         }
     }
