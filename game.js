@@ -56,17 +56,20 @@ if (typeof Phaser === 'undefined') {
             panel.setOrigin(0.5, 0.5);
             this.shopHUD = this.add.group();
 
+            // Center shop items horizontally
+            const shopWidth = 600; // Total width of items (100 + 150 + 150 + 150 + 50 padding)
+            const startX = 400 - (shopWidth / 2); // Center at x=400
             const shopItems = [
-                { type: 'office', x: 100 },
-                { type: 'server_rack', x: 250 },
-                { type: 'solar_panel', x: 400 },
-                { type: 'cooling_system', x: 550 }
+                { type: 'office', x: startX + 100 },
+                { type: 'server_rack', x: startX + 250 },
+                { type: 'solar_panel', x: startX + 400 },
+                { type: 'cooling_system', x: startX + 550 }
             ];
 
             shopItems.forEach(item => {
                 const buildingData = this.buildings[item.type];
                 const button = this.add.sprite(item.x, shopY, buildingData.shopSprite)
-                    .setScale(64 / 1024) // Scale 1024x1024 to 64x64
+                    .setScale(64 / 1024)
                     .setInteractive({ useHandCursor: true })
                     .on('pointerdown', () => this.buyBuilding(item.type))
                     .on('pointerover', () => this.showTooltip(item.x, shopY - 80, buildingData.tooltip))
@@ -78,16 +81,21 @@ if (typeof Phaser === 'undefined') {
                 this.shopHUD.add(button);
             });
 
-            this.powerBarOutline = this.add.rectangle(20, 400, 20, 200, 0xffffff);
+            // HUD Panel at Top
+            const hudY = 30;
+            const hudPanel = this.add.rectangle(400, hudY + 60, 800, 120, 0x333333);
+            hudPanel.setOrigin(0.5, 0.5);
+
+            this.powerBarOutline = this.add.rectangle(20, 400, 20, 200, 0xffffff, 2); // Thin stroke (lineWidth=2)
             this.powerBarOutline.setOrigin(0, 1);
             this.powerBar = this.add.graphics();
-            this.add.text(20, 190, 'Power', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5);
+            this.add.text(20, 610, 'Power', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5); // Label at bottom
             this.updatePowerBar();
 
-            this.heatBarOutline = this.add.rectangle(780, 400, 20, 200, 0xffffff);
+            this.heatBarOutline = this.add.rectangle(760, 400, 20, 200, 0xffffff, 2); // Moved to x=760, thin stroke
             this.heatBarOutline.setOrigin(0, 1);
             this.heatBar = this.add.graphics();
-            this.add.text(780, 190, 'Heat', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5);
+            this.add.text(760, 610, 'Heat', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5); // Label at bottom
             this.updateHeatBar();
 
             this.builtBuildings = { offices: [], servers: [], solar_panels: [], cooling_systems: [] };
@@ -199,8 +207,10 @@ if (typeof Phaser === 'undefined') {
             const color = usagePercentage > 0.8 ? 0xff0000 : 0x00ff00;
 
             this.powerBar.clear();
+            this.powerBar.lineStyle(2, 0xffffff); // Thin white stroke
             this.powerBar.fillStyle(color, 1);
             this.powerBar.fillRect(20, 400 - barHeight, 16, barHeight);
+            this.powerBar.strokeRect(20, 400 - barHeight, 16, barHeight); // Draw stroke
         }
 
         updateHeatBar() {
@@ -209,8 +219,10 @@ if (typeof Phaser === 'undefined') {
             const color = heatPercentage > 0.8 ? 0xff0000 : 0xffa500;
 
             this.heatBar.clear();
+            this.heatBar.lineStyle(2, 0xffffff); // Thin white stroke
             this.heatBar.fillStyle(color, 1);
-            this.heatBar.fillRect(780, 400 - barHeight, 16, barHeight);
+            this.heatBar.fillRect(760, 400 - barHeight, 16, barHeight); // Moved to x=760
+            this.heatBar.strokeRect(760, 400 - barHeight, 16, barHeight); // Draw stroke
         }
 
         triggerSentience() {
@@ -242,11 +254,12 @@ if (typeof Phaser === 'undefined') {
         }
 
         create() {
-            this.budgetText = this.add.text(60, 10, 'Budget: $10000', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
-            this.computingText = this.add.text(60, 40, 'Computing Power: 0 units', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
-            this.electricityText = this.add.text(60, 70, 'Electricity: 0 kW', { font: '16px Arial', fill: '#cccccc' });
-            this.aiText = this.add.text(60, 90, 'AI Ability: 0', { font: '16px Arial', fill: '#cccccc' });
-            this.heatText = this.add.text(60, 110, 'Heat: 0', { font: '16px Arial', fill: '#cccccc' });
+            // All bold, 24px Arial on gray strip
+            this.budgetText = this.add.text(20, 20, 'Budget: $10000', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
+            this.computingText = this.add.text(220, 20, 'Computing Power: 0 units', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
+            this.electricityText = this.add.text(420, 20, 'Electricity: 0 kW', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
+            this.aiText = this.add.text(620, 20, 'AI Ability: 0', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
+            this.heatText = this.add.text(740, 20, 'Heat: 0', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
         }
 
         update() {
