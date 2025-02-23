@@ -27,17 +27,22 @@ if (typeof Phaser === 'undefined') {
         create() {
             this.add.image(400, 300, 'desert_backdrop').setOrigin(0.5, 0.5);
 
+            // Resources
             this.budget = 10000;
             this.electricityGenerated = 0;
             this.electricityUsed = 0;
             this.computingPower = 0;
             this.aiAbility = 0;
+            this.heatLevel = 0;
+            this.maxHeat = 50;
+            this.offices = 0;
+            this.servers = 0;
 
             this.buildings = {
-                office: { cost: 2000, electricity: -10, computing: 0, sprite: 'office', tooltip: 'Base of operations, enables staff hires.' },
-                server_rack: { cost: 1000, electricity: -5, computing: 10, sprite: 'server_rack', tooltip: 'Increases computing power for AI training.' },
-                solar_panel: { cost: 500, electricity: 10, computing: 0, sprite: 'solar_panel', tooltip: 'Generates electricity to power your farm.' },
-                cooling_system: { cost: 1500, electricity: -5, computing: 0, sprite: 'cooling_system', tooltip: 'Reduces electricity use of nearby buildings.' }
+                office: { cost: 2000, electricity: -10, computing: 0, sprite: 'office', tooltip: 'Required first. Allows 3 servers per office.' },
+                server_rack: { cost: 1000, electricity: -5, computing: 10, heat: 10, sprite: 'server_rack', tooltip: 'Boosts computing power, uses power and generates heat.' },
+                solar_panel: { cost: 500, electricity: 10, computing: 0, sprite: 'solar_panel', tooltip: 'Generates electricity to power servers.' },
+                cooling_system: { cost: 1500, electricity: -5, heat: -15, sprite: 'cooling_system', tooltip: 'Reduces heat from servers.' }
             };
 
             const shopY = 530;
@@ -67,12 +72,18 @@ if (typeof Phaser === 'undefined') {
                 this.shopHUD.add(button);
             });
 
-            // Power Usage Bar (use a sprite or graphics object for better control)
+            // Power Usage Bar
             this.maxElectricity = 50;
             this.powerBarOutline = this.add.rectangle(20, 300, 20, 200, 0xffffff);
             this.powerBarOutline.setOrigin(0, 0.5);
             this.powerBar = this.add.graphics();
-            this.updatePowerBar(); // Initial draw
+            this.updatePowerBar();
+
+            // Heat Bar
+            this.heatBarOutline = this.add.rectangle(40, 300, 20, 200, 0xffffff);
+            this.heatBarOutline.setOrigin(0, 0.5);
+            this.heatBar = this.add.graphics();
+            this.updateHeatBar();
 
             this.builtBuildings = [];
 
@@ -83,16 +94,46 @@ if (typeof Phaser === 'undefined') {
                 loop: true
             });
 
+            // Pop-up message
+            this.popup = this.add.text(400, 300, '', { font: '20px Arial', fill: '#ffffff', backgroundColor: '#ff0000', padding: { x: 10, y: 10 } }).setOrigin(0.5).setVisible(false);
+
             this.scene.launch('HUDScene');
         }
 
         buyBuilding(type) {
             const buildingData = this.buildings[type];
             if (this.budget < buildingData.cost) {
-                console.log('Not enough budget!');
+                this.showPopup('Not enough budget!');
                 return;
             }
 
+            // Office-first rule
+            if (type !== 'office' && this.offices === 0) {
+                this.showPopup('Buy an office first!');
+                return;
+            }
+
+            // Server limit per office
+            if (type === 'server_rack' && this.servers >= this.offices * 3) {
+                this.showPopup('Buy another office to add more servers! (3 per office)');
+                return;
+            }
+
+            // Power check for servers and cooling
+            const netElectricity = this.electricityGenerated - this.electricityUsed;
+            if ((type === 'server_rack' || type === 'cooling_system' || type === 'office') && netElectricity + buildingData.electricity < 0) {
+                this.showPopup('Not enough electricity! Buy more solar panels.');
+                return;
+            }
+
+            // Heat check
+            const newHeat = this.heatLevel + (buildingData.heat || 0);
+            if (newHeat > this.maxHeat) {
+                this.showPopup('Heat level too high! Buy a cooling system.');
+                return;
+            }
+
+            // Purchase successful
             this.budget -= buildingData.cost;
             if (buildingData.electricity < 0) {
                 this.electricityUsed += Math.abs(buildingData.electricity);
@@ -100,6 +141,10 @@ if (typeof Phaser === 'undefined') {
                 this.electricityGenerated += buildingData.electricity;
             }
             this.computingPower += buildingData.computing;
+            this.heatLevel = Math.max(0, newHeat); // Prevent negative heat
+
+            if (type === 'office') this.offices++;
+            if (type === 'server_rack') this.servers++;
 
             const buildingWidth = 64;
             const startX = 266;
@@ -111,6 +156,7 @@ if (typeof Phaser === 'undefined') {
             this.builtBuildings.push(building);
 
             this.updatePowerBar();
+            this.updateHeatBar();
         }
 
         updateResources() {
@@ -123,6 +169,7 @@ if (typeof Phaser === 'undefined') {
                 }
             }
             this.updatePowerBar();
+            this.updateHeatBar();
         }
 
         updatePowerBar() {
@@ -133,6 +180,16 @@ if (typeof Phaser === 'undefined') {
             this.powerBar.clear();
             this.powerBar.fillStyle(color, 1);
             this.powerBar.fillRect(20, 300 - (barHeight / 2), 16, barHeight);
+        }
+
+        updateHeatBar() {
+            const heatPercentage = Math.min(this.heatLevel / this.maxHeat, 1);
+            const barHeight = Math.max(0, 200 * heatPercentage);
+            const color = heatPercentage > 0.8 ? 0xff0000 : 0xffa500; // Orange for heat
+
+            this.heatBar.clear();
+            this.heatBar.fillStyle(color, 1);
+            this.heatBar.fillRect(40, 300 - (barHeight / 2), 16, barHeight);
         }
 
         triggerSentience() {
@@ -150,6 +207,12 @@ if (typeof Phaser === 'undefined') {
                 this.tooltip = null;
             }
         }
+
+        showPopup(message) {
+            this.popup.setText(message);
+            this.popup.setVisible(true);
+            this.time.delayedCall(2000, () => this.popup.setVisible(false), [], this); // Hide after 2 seconds
+        }
     }
 
     class HUDScene extends Phaser.Scene {
@@ -158,10 +221,11 @@ if (typeof Phaser === 'undefined') {
         }
 
         create() {
-            this.budgetText = this.add.text(40, 10, 'Budget: $10000', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
-            this.computingText = this.add.text(40, 40, 'Computing Power: 0 units', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
-            this.electricityText = this.add.text(40, 70, 'Electricity: 0 kW', { font: '16px Arial', fill: '#cccccc' });
-            this.aiText = this.add.text(40, 90, 'AI Ability: 0', { font: '16px Arial', fill: '#cccccc' });
+            this.budgetText = this.add.text(60, 10, 'Budget: $10000', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
+            this.computingText = this.add.text(60, 40, 'Computing Power: 0 units', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
+            this.electricityText = this.add.text(60, 70, 'Electricity: 0 kW', { font: '16px Arial', fill: '#cccccc' });
+            this.aiText = this.add.text(60, 90, 'AI Ability: 0', { font: '16px Arial', fill: '#cccccc' });
+            this.heatText = this.add.text(60, 110, 'Heat: 0', { font: '16px Arial', fill: '#cccccc' });
         }
 
         update() {
@@ -170,7 +234,18 @@ if (typeof Phaser === 'undefined') {
             this.computingText.setText(`Computing Power: ${mainScene.computingPower.toFixed(0)} units`);
             this.electricityText.setText(`Electricity: ${mainScene.electricityGenerated - mainScene.electricityUsed} kW`);
             this.aiText.setText(`AI Ability: ${mainScene.aiAbility.toFixed(2)}`);
+            this.heatText.setText(`Heat: ${mainScene.heatLevel.toFixed(0)}`);
         }
     }
 
     const config = {
+        type: Phaser.AUTO,
+        width: 800,
+        height: 600,
+        scene: [BootScene, MainScene, HUDScene],
+        pixelArt: true,
+        backgroundColor: '#000000'
+    };
+
+    const game = new Phaser.Game(config);
+}
