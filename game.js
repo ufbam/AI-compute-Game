@@ -25,17 +25,14 @@ if (typeof Phaser === 'undefined') {
         }
 
         create() {
-            // Desert backdrop
             this.add.image(400, 300, 'desert_backdrop').setOrigin(0.5, 0.5);
 
-            // Resources
             this.budget = 10000;
             this.electricityGenerated = 0;
             this.electricityUsed = 0;
             this.computingPower = 0;
             this.aiAbility = 0;
 
-            // Building definitions
             this.buildings = {
                 office: { cost: 2000, electricity: -10, computing: 0, sprite: 'office', tooltip: 'Base of operations, enables staff hires.' },
                 server_rack: { cost: 1000, electricity: -5, computing: 10, sprite: 'server_rack', tooltip: 'Increases computing power for AI training.' },
@@ -43,7 +40,6 @@ if (typeof Phaser === 'undefined') {
                 cooling_system: { cost: 1500, electricity: -5, computing: 0, sprite: 'cooling_system', tooltip: 'Reduces electricity use of nearby buildings.' }
             };
 
-            // Shop HUD Panel
             const shopY = 530;
             const panel = this.add.rectangle(400, shopY + 50, 800, 140, 0x333333);
             panel.setOrigin(0.5, 0.5);
@@ -71,14 +67,13 @@ if (typeof Phaser === 'undefined') {
                 this.shopHUD.add(button);
             });
 
-            // Power Usage Bar
+            // Power Usage Bar (use a sprite or graphics object for better control)
             this.maxElectricity = 50;
-            this.powerBarOutline = this.add.rectangle(20, 300, 20, 200, 0xffffff); // Outline
+            this.powerBarOutline = this.add.rectangle(20, 300, 20, 200, 0xffffff);
             this.powerBarOutline.setOrigin(0, 0.5);
-            this.powerBar = this.add.rectangle(20, 300, 16, 0, 0x00ff00); // Fill (starts at 0 height)
-            this.powerBar.setOrigin(0, 0.5);
+            this.powerBar = this.add.graphics();
+            this.updatePowerBar(); // Initial draw
 
-            // Track built buildings
             this.builtBuildings = [];
 
             this.time.addEvent({
@@ -106,7 +101,6 @@ if (typeof Phaser === 'undefined') {
             }
             this.computingPower += buildingData.computing;
 
-            // Place building in middle third strip (x: 266-533)
             const buildingWidth = 64;
             const startX = 266;
             const maxBuildings = Math.floor((533 - startX) / buildingWidth);
@@ -133,10 +127,12 @@ if (typeof Phaser === 'undefined') {
 
         updatePowerBar() {
             const usagePercentage = Math.min(this.electricityUsed / this.maxElectricity, 1);
-            const barHeight = Math.max(0, 200 * usagePercentage); // Ensure non-negative
-            this.powerBar.displayHeight = barHeight; // Use displayHeight to scale visually
-            this.powerBar.y = 300 - (barHeight / 2); // Grow upward from center
-            this.powerBar.fillColor = usagePercentage > 0.8 ? 0xff0000 : 0x00ff00;
+            const barHeight = Math.max(0, 200 * usagePercentage);
+            const color = usagePercentage > 0.8 ? 0xff0000 : 0x00ff00;
+
+            this.powerBar.clear();
+            this.powerBar.fillStyle(color, 1);
+            this.powerBar.fillRect(20, 300 - (barHeight / 2), 16, barHeight);
         }
 
         triggerSentience() {
@@ -178,13 +174,3 @@ if (typeof Phaser === 'undefined') {
     }
 
     const config = {
-        type: Phaser.AUTO,
-        width: 800,
-        height: 600,
-        scene: [BootScene, MainScene, HUDScene],
-        pixelArt: true,
-        backgroundColor: '#000000'
-    };
-
-    const game = new Phaser.Game(config);
-}
