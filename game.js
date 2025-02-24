@@ -90,18 +90,18 @@ if (typeof Phaser === 'undefined') {
             this.powerBarOutlineUsage = this.add.rectangle(20, 400, 20, 200, 0xffffff, 2);
             this.powerBarOutlineUsage.setOrigin(0, 1);
             this.powerBarUsage = this.add.graphics();
-            this.add.text(30, 570, 'Usage', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5); // Moved lower, centered
+            this.add.text(30, 570, 'Usage', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5);
 
             this.powerBarOutlineOutput = this.add.rectangle(40, 400, 20, 200, 0xffffff, 2);
             this.powerBarOutlineOutput.setOrigin(0, 1);
             this.powerBarOutput = this.add.graphics();
-            this.add.text(30, 590, 'Output', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5); // Below Usage
+            this.add.text(30, 590, 'Output', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5);
 
             // Heat Bar (Right, x=760)
             this.heatBarOutline = this.add.rectangle(760, 400, 20, 200, 0xffffff, 2);
             this.heatBarOutline.setOrigin(0, 1);
             this.heatBar = this.add.graphics();
-            this.add.text(760, 580, 'Heat', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5); // Moved lower
+            this.add.text(760, 580, 'Heat', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5);
             this.updatePowerBars();
             this.updateHeatBar();
 
@@ -116,11 +116,12 @@ if (typeof Phaser === 'undefined') {
 
             // Narrative pop-up
             this.narrativePopup = this.add.rectangle(400, 300, 600, 200, 0x333333);
-            this.narrativePopup.setOrigin(0.5);
-            this.narrativeText = this.add.text(400, 260, '', { font: '16px Arial', fill: '#ffffff', wordWrap: { width: 560, useAdvancedWrap: true } }).setOrigin(0.5);
+            this.narrativePopup.setOrigin(0.5).setDepth(10); // Ensure it's on top
+            this.narrativeText = this.add.text(400, 260, '', { font: '16px Arial', fill: '#ffffff', wordWrap: { width: 560, useAdvancedWrap: true } }).setOrigin(0.5).setDepth(11); // Above panel
             this.okButton = this.add.text(400, 500, 'OK', { font: '20px Arial', fill: '#00ff00', backgroundColor: '#000000', padding: { x: 15, y: 5 } })
                 .setOrigin(0.5)
                 .setInteractive({ useHandCursor: true })
+                .setDepth(12) // Above text
                 .on('pointerdown', () => this.hideNarrative());
 
             this.narrativePopup.setVisible(false);
@@ -133,6 +134,13 @@ if (typeof Phaser === 'undefined') {
             this.narrativeShownHeat = false;
             this.narrativeShownAI = false;
             this.narrativeShownPower = false;
+
+            // Add keyboard input for narrative dismissal
+            this.input.keyboard.on('keydown', (event) => {
+                if (this.narrativePopup.visible && (event.key === ' ' || event.key === 'Enter' || event.key === 'Escape')) {
+                    this.hideNarrative();
+                }
+            });
 
             this.scene.launch('HUDScene');
         }
