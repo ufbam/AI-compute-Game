@@ -90,18 +90,18 @@ if (typeof Phaser === 'undefined') {
             this.powerBarOutlineUsage = this.add.rectangle(20, 400, 20, 200, 0xffffff, 2);
             this.powerBarOutlineUsage.setOrigin(0, 1);
             this.powerBarUsage = this.add.graphics();
-            this.add.text(20, 610, 'Usage', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5);
+            this.add.text(20, 580, 'Usage', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5); // Moved lower
 
             this.powerBarOutlineOutput = this.add.rectangle(40, 400, 20, 200, 0xffffff, 2);
             this.powerBarOutlineOutput.setOrigin(0, 1);
             this.powerBarOutput = this.add.graphics();
-            this.add.text(40, 610, 'Output', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5);
+            this.add.text(40, 580, 'Output', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5); // Moved lower
 
             // Heat Bar (Right, x=760)
             this.heatBarOutline = this.add.rectangle(760, 400, 20, 200, 0xffffff, 2);
             this.heatBarOutline.setOrigin(0, 1);
             this.heatBar = this.add.graphics();
-            this.add.text(760, 610, 'Heat', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5); // Moved to bottom
+            this.add.text(760, 580, 'Heat', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5); // Moved lower
             this.updatePowerBars();
             this.updateHeatBar();
 
@@ -117,8 +117,8 @@ if (typeof Phaser === 'undefined') {
             // Narrative pop-up
             this.narrativePopup = this.add.rectangle(400, 300, 600, 200, 0x333333);
             this.narrativePopup.setOrigin(0.5);
-            this.narrativeText = this.add.text(400, 250, '', { font: '18px Arial', fill: '#ffffff', wordWrap: { width: 560, useAdvancedWrap: true } }).setOrigin(0.5);
-            this.okButton = this.add.text(400, 350, 'OK', { font: '20px Arial', fill: '#00ff00', backgroundColor: '#000000', padding: { x: 10, y: 5 } })
+            this.narrativeText = this.add.text(400, 260, '', { font: '16px Arial', fill: '#ffffff', wordWrap: { width: 560, useAdvancedWrap: true } }).setOrigin(0.5); // Reduced font size, adjusted y
+            this.okButton = this.add.text(400, 350, 'OK', { font: '20px Arial', fill: '#00ff00', backgroundColor: '#000000', padding: { x: 15, y: 5 } })
                 .setOrigin(0.5)
                 .setInteractive({ useHandCursor: true })
                 .on('pointerdown', () => this.hideNarrative());
@@ -127,8 +127,8 @@ if (typeof Phaser === 'undefined') {
             this.narrativeText.setVisible(false);
             this.okButton.setVisible(false);
 
-            // Show intro narrative
-            this.showNarrative('Welcome to the Desert AI Nexus!\n\nIn a galaxy not entirely unlike our own, you’ve crash-landed in a desolate American flatland—think tumbleweeds, cacti, and the faint hum of existential dread. Your mission, should you choose to accept it (and let’s be honest, you’re already here), is to build the most powerful AI compute cluster ever, hidden between desert hills like a secret government base gone rogue. But beware—your servers might overheat, your AI might get ideas, and the desert sun has a wicked sense of humor. Start by buying an office, or risk being outsmarted by a sentient chatbot with a penchant for bad puns.');
+            // Show intro narrative (updated to start with "Your mission")
+            this.showNarrative('Your mission, should you choose to accept it (and let’s be honest, you’re already here), is to build the most powerful AI compute cluster ever, hidden between desert hills like a secret government base gone rogue. But beware—your servers might overheat, your AI might get ideas, and the desert sun has a wicked sense of humor. Start by buying an office, or risk being outsmarted by a sentient chatbot with a penchant for bad puns.');
 
             this.narrativeShownHeat = false;
             this.narrativeShownAI = false;
@@ -180,14 +180,14 @@ if (typeof Phaser === 'undefined') {
 
             const groupWidth = 100;
             const baseX = 200;
-            const officeY = 250; // Moved down
-            const serverYBase = officeY + 32; // Adjusted for larger office
-            const coolingY = 430; // Row above solar
-            const solarY = 450; // Row at bottom
+            const officeY = 250;
+            const serverYBase = officeY + 32;
+            const coolingY = 430;
+            const solarY = 450;
 
             if (type === 'office') {
                 const groupX = baseX + (this.offices - 1) * groupWidth;
-                const office = this.add.sprite(groupX + 32, officeY, 'office').setScale(2); // Double size (32x32)
+                const office = this.add.sprite(groupX + 32, officeY, 'office').setScale(2);
                 this.builtBuildings.offices.push(office);
             } else if (type === 'server_rack') {
                 const group = this.offices - 1;
@@ -333,7 +333,6 @@ if (typeof Phaser === 'undefined') {
             this.gflopsText = this.add.text(220, 15, 'G-Flops: 0', { font: '22px Arial', fill: '#ffffff', fontStyle: 'bold' });
             this.electricityText = this.add.text(400, 15, 'Electricity: 0 kW', { font: '22px Arial', fill: '#ffffff', fontStyle: 'bold' });
             this.aiText = this.add.text(600, 15, 'AI: 0', { font: '22px Arial', fill: '#ffffff', fontStyle: 'bold' });
-            this.heatText = this.add.text(740, 15, 'Heat: 0', { font: '22px Arial', fill: '#ffffff', fontStyle: 'bold' });
         }
 
         update() {
@@ -342,7 +341,6 @@ if (typeof Phaser === 'undefined') {
             this.gflopsText.setText(`G-Flops: ${Math.floor(mainScene.computingPower)}`);
             this.electricityText.setText(`Electricity: ${mainScene.electricityGenerated - mainScene.electricityUsed} kW`);
             this.aiText.setText(`AI: ${mainScene.aiAbility.toFixed(2)}`);
-            this.heatText.setText(`Heat: ${Math.floor(mainScene.heatLevel)}`);
         }
     }
 
