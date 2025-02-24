@@ -101,7 +101,7 @@ if (typeof Phaser === 'undefined') {
             this.heatBarOutline = this.add.rectangle(760, 400, 20, 200, 0xffffff, 2);
             this.heatBarOutline.setOrigin(0, 1);
             this.heatBar = this.add.graphics();
-            this.add.text(760, 610, 'Heat', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5);
+            this.add.text(760, 610, 'Heat', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5); // Moved to bottom
             this.updatePowerBars();
             this.updateHeatBar();
 
@@ -118,9 +118,9 @@ if (typeof Phaser === 'undefined') {
             this.narrativePopup = this.add.rectangle(400, 300, 600, 200, 0x333333);
             this.narrativePopup.setOrigin(0.5);
             this.narrativeText = this.add.text(400, 250, '', { font: '18px Arial', fill: '#ffffff', wordWrap: { width: 560, useAdvancedWrap: true } }).setOrigin(0.5);
-            this.okButton = this.add.text(400, 350, 'OK', { font: '20px Arial', fill: '#00ff00', backgroundColor: '#000000' })
+            this.okButton = this.add.text(400, 350, 'OK', { font: '20px Arial', fill: '#00ff00', backgroundColor: '#000000', padding: { x: 10, y: 5 } })
                 .setOrigin(0.5)
-                .setInteractive()
+                .setInteractive({ useHandCursor: true })
                 .on('pointerdown', () => this.hideNarrative());
 
             this.narrativePopup.setVisible(false);
@@ -129,6 +129,10 @@ if (typeof Phaser === 'undefined') {
 
             // Show intro narrative
             this.showNarrative('Welcome to the Desert AI Nexus!\n\nIn a galaxy not entirely unlike our own, you’ve crash-landed in a desolate American flatland—think tumbleweeds, cacti, and the faint hum of existential dread. Your mission, should you choose to accept it (and let’s be honest, you’re already here), is to build the most powerful AI compute cluster ever, hidden between desert hills like a secret government base gone rogue. But beware—your servers might overheat, your AI might get ideas, and the desert sun has a wicked sense of humor. Start by buying an office, or risk being outsmarted by a sentient chatbot with a penchant for bad puns.');
+
+            this.narrativeShownHeat = false;
+            this.narrativeShownAI = false;
+            this.narrativeShownPower = false;
 
             this.scene.launch('HUDScene');
         }
@@ -210,7 +214,6 @@ if (typeof Phaser === 'undefined') {
                 this.builtBuildings.cooling_systems.push(cooling);
             }
 
-            // Check for events and show narrative
             this.checkNarrativeEvents();
 
             this.updatePowerBars();
@@ -294,14 +297,14 @@ if (typeof Phaser === 'undefined') {
             this.narrativePopup.setVisible(true);
             this.narrativeText.setVisible(true);
             this.okButton.setVisible(true);
-            this.scene.pause(); // Pause game until OK clicked
+            this.scene.pause();
         }
 
         hideNarrative() {
             this.narrativePopup.setVisible(false);
             this.narrativeText.setVisible(false);
             this.okButton.setVisible(false);
-            this.scene.resume(); // Resume game
+            this.scene.resume();
         }
 
         checkNarrativeEvents() {
@@ -327,7 +330,7 @@ if (typeof Phaser === 'undefined') {
 
         create() {
             this.budgetText = this.add.text(20, 15, 'Budget: $10000', { font: '22px Arial', fill: '#ffffff', fontStyle: 'bold' });
-            this.computingText = this.add.text(200, 15, 'Computing: 0 GFlops', { font: '22px Arial', fill: '#ffffff', fontStyle: 'bold' });
+            this.gflopsText = this.add.text(220, 15, 'G-Flops: 0', { font: '22px Arial', fill: '#ffffff', fontStyle: 'bold' });
             this.electricityText = this.add.text(400, 15, 'Electricity: 0 kW', { font: '22px Arial', fill: '#ffffff', fontStyle: 'bold' });
             this.aiText = this.add.text(600, 15, 'AI: 0', { font: '22px Arial', fill: '#ffffff', fontStyle: 'bold' });
             this.heatText = this.add.text(740, 15, 'Heat: 0', { font: '22px Arial', fill: '#ffffff', fontStyle: 'bold' });
@@ -336,7 +339,7 @@ if (typeof Phaser === 'undefined') {
         update() {
             const mainScene = this.scene.get('MainScene');
             this.budgetText.setText(`Budget: $${Math.floor(mainScene.budget)}`);
-            this.computingText.setText(`Computing: ${Math.floor(mainScene.computingPower)} GFlops`);
+            this.gflopsText.setText(`G-Flops: ${Math.floor(mainScene.computingPower)}`);
             this.electricityText.setText(`Electricity: ${mainScene.electricityGenerated - mainScene.electricityUsed} kW`);
             this.aiText.setText(`AI: ${mainScene.aiAbility.toFixed(2)}`);
             this.heatText.setText(`Heat: ${Math.floor(mainScene.heatLevel)}`);
