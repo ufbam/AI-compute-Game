@@ -75,8 +75,8 @@ if (typeof Phaser === 'undefined') {
                     .on('pointerover', () => this.showTooltip(item.x, shopY - 80, buildingData.tooltip))
                     .on('pointerout', () => this.hideTooltip());
 
-                this.add.text(item.x, shopY + 40, item.type.replace('_', ' '), { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5);
-                this.add.text(item.x, shopY + 60, `$${buildingData.cost}`, { font: '14px Arial', fill: '#ffff00' }).setOrigin(0.5);
+                this.add.text(item.x, shopY + 40, item.type.replace('_', ' '), { font: '14px Arial', fill: '#ffffff' }).setOrigin(0.5);
+                this.add.text(item.x, shopY + 60, `$${buildingData.cost}`, { font: '12px Arial', fill: '#ffff00' }).setOrigin(0.5);
 
                 this.shopHUD.add(button);
             });
@@ -86,16 +86,23 @@ if (typeof Phaser === 'undefined') {
             const hudPanel = this.add.rectangle(400, hudY + 20, 800, 40, 0x333333);
             hudPanel.setOrigin(0.5, 0.5);
 
-            this.powerBarOutline = this.add.rectangle(20, 400, 20, 200, 0xffffff, 2); // Thin stroke
-            this.powerBarOutline.setOrigin(0, 1);
-            this.powerBar = this.add.graphics();
-            this.add.text(20, 610, 'Power', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5); // Label at bottom
-            this.updatePowerBar();
+            // Power Bars (Left: Usage and Output)
+            this.powerBarOutlineUsage = this.add.rectangle(20, 400, 20, 200, 0xffffff, 2); // Usage
+            this.powerBarOutlineUsage.setOrigin(0, 1);
+            this.powerBarUsage = this.add.graphics();
+            this.add.text(20, 610, 'Usage', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5); // Label at bottom
 
+            this.powerBarOutlineOutput = this.add.rectangle(40, 400, 20, 200, 0xffffff, 2); // Output
+            this.powerBarOutlineOutput.setOrigin(0, 1);
+            this.powerBarOutput = this.add.graphics();
+            this.add.text(40, 610, 'Output', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5); // Label at bottom
+
+            // Heat Bar (Right, x=760)
             this.heatBarOutline = this.add.rectangle(760, 400, 20, 200, 0xffffff, 2); // Thin stroke
             this.heatBarOutline.setOrigin(0, 1);
             this.heatBar = this.add.graphics();
             this.add.text(760, 610, 'Heat', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5); // Label at bottom
+            this.updatePowerBars();
             this.updateHeatBar();
 
             this.builtBuildings = { offices: [], servers: [], solar_panels: [], cooling_systems: [] };
@@ -156,35 +163,41 @@ if (typeof Phaser === 'undefined') {
 
             const groupWidth = 100;
             const baseX = 200;
-            const officeY = 150;
-            const scale = 1;
+            const officeY = 200; // Moved down
+            const serverYBase = officeY + 32; // Adjusted for larger office
+            const coolingY = 400;
+            const solarY = 450; // Row at bottom
 
             if (type === 'office') {
                 const groupX = baseX + (this.officeGroups.length * groupWidth);
-                const office = this.add.sprite(groupX + 32, officeY, 'office').setScale(scale);
+                const office = this.add.sprite(groupX + 32, officeY, 'office').setScale(2); // Double size (32x32)
                 this.builtBuildings.offices.push(office);
-                this.officeGroups.push({ x: groupX, servers: [], solar_panels: [], cooling_systems: [] });
-            } else {
+                this.officeGroups.push({ x: groupX, servers: [], cooling_systems: [] });
+            } else if (type === 'server_rack') {
                 const group = this.officeGroups[this.offices - 1];
-                if (type === 'server_rack' && group.servers.length < 3) {
-                    const yPos = officeY + 32 + (group.servers.length * 32);
-                    const server = this.add.sprite(group.x + 32, yPos, 'server_rack').setScale(scale);
+                if (group.servers.length < 3) {
+                    const yPos = serverYBase + (group.servers.length * 32);
+                    const server = this.add.sprite(group.x + 32, yPos, 'server_rack').setScale(1);
                     group.servers.push(server);
                     this.builtBuildings.servers.push(server);
-                } else if (type === 'solar_panel') {
-                    const yPos = officeY + 128 + (group.solar_panels.length * 32);
-                    const solar = this.add.sprite(group.x + 32, yPos, 'solar_panel').setScale(scale);
-                    group.solar_panels.push(solar);
-                    this.builtBuildings.solar_panels.push(solar);
-                } else if (type === 'cooling_system') {
-                    const yPos = officeY + 192 + (group.cooling_systems.length * 32);
-                    const cooling = this.add.sprite(group.x + 32, yPos, 'cooling_system').setScale(scale);
-                    group.cooling_systems.push(cooling);
-                    this.builtBuildings.cooling_systems.push(cooling);
                 }
+            } else if (type === 'solar_panel') {
+                const buildingWidth = 16; // Small size
+                const startX = 266;
+                const maxPanels = Math.floor((533 - startX) / buildingWidth);
+                const xPos = startX + (this.builtBuildings.solar_panels.length % maxPanels) * buildingWidth;
+                const solar = this.add.sprite(xPos, solarY, 'solar_panel').setScale(1);
+                this.builtBuildings.solar_panels.push(solar);
+                this.electricityGenerated += buildingData.electricity;
+            } else if (type === 'cooling_system') {
+                const group = this.officeGroups[this.offices - 1];
+                const yPos = coolingY + (group.cooling_systems.length * 32);
+                const cooling = this.add.sprite(group.x + 32, yPos, 'cooling_system').setScale(1);
+                group.cooling_systems.push(cooling);
+                this.builtBuildings.cooling_systems.push(cooling);
             }
 
-            this.updatePowerBar();
+            this.updatePowerBars();
             this.updateHeatBar();
         }
 
@@ -197,20 +210,32 @@ if (typeof Phaser === 'undefined') {
                     this.triggerSentience();
                 }
             }
-            this.updatePowerBar();
+            this.updatePowerBars();
             this.updateHeatBar();
         }
 
-        updatePowerBar() {
+        updatePowerBars() {
+            // Usage Bar
             const usagePercentage = Math.min(this.electricityUsed / this.maxElectricity, 1);
             const barHeight = Math.max(0, 200 * usagePercentage);
-            const color = usagePercentage > 0.8 ? 0xff0000 : 0x00ff00;
+            const usageColor = usagePercentage > 0.8 ? 0xff0000 : 0x00ff00;
 
-            this.powerBar.clear();
-            this.powerBar.lineStyle(2, 0xffffff); // Thin white stroke
-            this.powerBar.fillStyle(color, 1);
-            this.powerBar.fillRect(20, 400 - barHeight, 16, barHeight);
-            this.powerBar.strokeRect(20, 400 - barHeight, 16, barHeight); // Draw stroke
+            this.powerBarUsage.clear();
+            this.powerBarUsage.lineStyle(2, 0xffffff);
+            this.powerBarUsage.fillStyle(usageColor, 1);
+            this.powerBarUsage.fillRect(20, 400 - barHeight, 16, barHeight);
+            this.powerBarUsage.strokeRect(20, 400 - barHeight, 16, barHeight);
+
+            // Output Bar
+            const outputPercentage = Math.min(this.electricityGenerated / this.maxElectricity, 1);
+            const outputBarHeight = Math.max(0, 200 * outputPercentage);
+            const outputColor = outputPercentage > 0.8 ? 0xff0000 : 0x00ff00;
+
+            this.powerBarOutput.clear();
+            this.powerBarOutput.lineStyle(2, 0xffffff);
+            this.powerBarOutput.fillStyle(outputColor, 1);
+            this.powerBarOutput.fillRect(40, 400 - outputBarHeight, 16, outputBarHeight);
+            this.powerBarOutput.strokeRect(40, 400 - outputBarHeight, 16, outputBarHeight);
         }
 
         updateHeatBar() {
@@ -219,10 +244,10 @@ if (typeof Phaser === 'undefined') {
             const color = heatPercentage > 0.8 ? 0xff0000 : 0xffa500;
 
             this.heatBar.clear();
-            this.heatBar.lineStyle(2, 0xffffff); // Thin white stroke
+            this.heatBar.lineStyle(2, 0xffffff);
             this.heatBar.fillStyle(color, 1);
-            this.heatBar.fillRect(760, 400 - barHeight, 16, barHeight); // Moved to x=760
-            this.heatBar.strokeRect(760, 400 - barHeight, 16, barHeight); // Draw stroke
+            this.heatBar.fillRect(760, 400 - barHeight, 16, barHeight);
+            this.heatBar.strokeRect(760, 400 - barHeight, 16, barHeight);
         }
 
         triggerSentience() {
@@ -254,12 +279,11 @@ if (typeof Phaser === 'undefined') {
         }
 
         create() {
-            // All bold, 24px Arial on thinner strip
-            this.budgetText = this.add.text(20, 20, 'Budget: $10000', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
-            this.computingText = this.add.text(200, 20, 'Computing: 0 units', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
-            this.electricityText = this.add.text(400, 20, 'Electricity: 0 kW', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
-            this.aiText = this.add.text(600, 20, 'AI: 0', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
-            this.heatText = this.add.text(740, 20, 'Heat: 0', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
+            this.budgetText = this.add.text(20, 15, 'Budget: $10000', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
+            this.computingText = this.add.text(200, 15, 'Computing: 0 units', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
+            this.electricityText = this.add.text(400, 15, 'Electricity: 0 kW', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
+            this.aiText = this.add.text(600, 15, 'AI: 0', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
+            this.heatText = this.add.text(740, 15, 'Heat: 0', { font: '24px Arial', fill: '#ffffff', fontStyle: 'bold' });
         }
 
         update() {
