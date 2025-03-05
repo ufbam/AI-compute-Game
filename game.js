@@ -1,7 +1,6 @@
 if (typeof Phaser === 'undefined') {
     console.error('Phaser is not loaded. Check the script tag in index.html.');
 } else {
-    // Narrative Scene for story text
     class NarrativeScene extends Phaser.Scene {
         constructor() {
             super('NarrativeScene');
@@ -35,7 +34,6 @@ if (typeof Phaser === 'undefined') {
         }
     }
 
-    // Boot Scene to load assets
     class BootScene extends Phaser.Scene {
         constructor() {
             super('BootScene');
@@ -55,17 +53,17 @@ if (typeof Phaser === 'undefined') {
         }
     }
 
-    // Main Game Scene
     class MainScene extends Phaser.Scene {
         constructor() {
             super('MainScene');
         }
 
         create() {
-            // Add backdrop (underneath layer)
+            // Add backdrop and overlay, both centered at (400, 300)
             this.add.image(400, 300, 'desert_backdrop').setOrigin(0.5).setDepth(0);
+            this.overlay = this.add.image(400, 300, 'desert_overlay').setOrigin(0.5).setAlpha(0).setDepth(0);
 
-            // Initialize game variables
+            // Game state
             this.budget = 10000;
             this.electricityGenerated = 0;
             this.electricityUsed = 0;
@@ -97,7 +95,7 @@ if (typeof Phaser === 'undefined') {
             shopItems.forEach(item => {
                 const data = this.buildings[item.type];
                 this.add.sprite(item.x, shopY, data.shopSprite)
-                    .setScale(0.0625) // 64/1024
+                    .setScale(0.0625)
                     .setInteractive({ useHandCursor: true })
                     .on('pointerdown', () => this.buyBuilding(item.type))
                     .on('pointerover', () => this.showTooltip(item.x, shopY - 80, data.tooltip))
@@ -179,6 +177,7 @@ if (typeof Phaser === 'undefined') {
         revealOverlay(type) {
             const gridSize = 200; // 200x200 pixels
             const gridWidth = 4; // 800 / 200
+            const gridHeight = 3; // 600 / 200
             let availableAreas = [];
 
             if (type === 'solar_panel') {
@@ -191,7 +190,7 @@ if (typeof Phaser === 'undefined') {
                 }
             } else {
                 // Middle and bottom rows (y=1, y=2)
-                for (let y = 1; y <= 2; y++) {
+                for (let y = 1; y < gridHeight; y++) {
                     for (let x = 0; x < gridWidth; x++) {
                         const key = `${x},${y}`;
                         if (!this.revealedAreas.has(key)) {
@@ -216,7 +215,7 @@ if (typeof Phaser === 'undefined') {
                 .setDepth(0);
             this.revealedSprites.push(sprite);
 
-            console.log(`Revealed ${type} at (${revealX}, ${revealY})`);
+            console.log(`Revealed ${type} at (${revealX}, ${revealY}) - Total revealed: ${this.revealedAreas.size}`);
         }
 
         updateBars() {
@@ -268,7 +267,7 @@ if (typeof Phaser === 'undefined') {
         }
 
         showPopup(message) {
-            const popup = this.add.text(400, 300, message, {
+            const popup = this.add.text(400, 500, message, {
                 font: '20px Arial',
                 fill: '#ffffff',
                 backgroundColor: '#ff0000',
