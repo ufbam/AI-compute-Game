@@ -49,10 +49,13 @@ if (typeof Phaser === 'undefined') {
 
         preload() {
             this.load.image('desert_backdrop', 'assets/desert_backdrop.png');
+            this.load.image('desert_overlay', 'assets/desert_overlay.png');
+            // Original 16x16 for desert (though we won’t use these for placement anymore)
             this.load.image('office', 'assets/office.png');
             this.load.image('server_rack', 'assets/server_rack.png');
             this.load.image('solar_panel', 'assets/solar_panel.png');
             this.load.image('cooling_system', 'assets/cooling_system.png');
+            // High-res 1024x1024 for shop
             this.load.image('office_high', 'assets/office_high.png');
             this.load.image('server_rack_high', 'assets/server_rack_high.png');
             this.load.image('solar_panel_high', 'assets/solar_panel_high.png');
@@ -138,6 +141,10 @@ if (typeof Phaser === 'undefined') {
             this.updatePowerBars();
             this.updateHeatBar();
 
+            // Overlay for revealing
+            this.overlay = this.add.image(400, 300, 'desert_overlay').setOrigin(0.5, 0.5).setAlpha(0); // Initially invisible
+            this.revealedAreas = new Set(); // Track revealed 50x50 squares
+
             this.builtBuildings = { offices: [], servers: [], solar_panels: [], cooling_systems: [] };
 
             this.time.addEvent({
@@ -154,6 +161,114 @@ if (typeof Phaser === 'undefined') {
             this.narrativeShownPower = false;
 
             this.scene.launch('HUDScene');
+        }
+
+        buyBuilding(type) {
+            const buildingData = this.buildings[type];
+            if (this.budget < buildingData.cost) {
+                this.showPopup('Not enough budget!');
+                return;
+            }
+
+            if (type !== 'office' && this.offices === 0) {
+                this.showPopup('Buy an office first!');
+                return;
+            }
+
+            if (type === 'server_rack' && this.servers >= this.offices * 3) {
+                this.showPopup('Buy another office to add more servers! (3 per office)');
+                return;
+            }
+
+            const netElectricity = this.electricityGenerated - this.electricityUsed;
+            if (this.offices > 0 && (type === 'server_rack' || type === 'cooling_system' || type === 'office') && netElectricity + buildingData.electricity < 0) {
+                this.showPopup('Not enough electricity! Buy more solar panels.');
+                return;
+            }
+
+            const newHeat = this.heatLevel + (buildingData.heat || 0);
+            if (newHeat > this.maxHeat) {
+                this.showPopup('Heat level too high! Buy a cooling system.');
+                return;
+            }
+
+            this.budget -= buildingData.cost;
+            if (buildingData.electricity < 0) {
+                this.electricityUsed += Math.abs(buildingData.electricity);
+            } else {
+                this.electricityGenerated += buildingData.electricity;
+            }
+            this.computingPower += buildingData.computing || 0;
+            this.heatLevel = Math.max(0, newHeat);
+
+            if (type === 'office') this.offices++;
+            if (type === 'server_rack') this.servers++;
+
+            // Reveal 50x50 square from overlay
+            this.revealOverlay(type);
+
+            this.checkNarrativeEvents();
+
+            this.updatePowerBars();
+            this.updateHeatBar();
+        }
+
+        revealOverlay(type) {
+            const gridSize = 50; // 50x50 pixel squares
+            const gridWidth = Math.floor(800 / gridSize); // 16 columns (800 / 50)
+            const gridHeight = Math.floor(600 / gridSize); // 12 rows (600 / 50)
+
+            let availableAreas = [];
+            for (let y = 0; y < gridHeight; y++) {
+                for (let x = 0; x < gridWidth; x++) {
+                    const key = `${x},${y}`;
+                    if (!this.revealedAreas.has(key)) {
+                        availableAreas.push({ x, y });
+                    }
+                }
+            }
+
+            if (availableAreas.length === 0) return; // All areas revealed
+
+            let selectedArea;
+            if (type === 'solar_panel') {
+                // Reveal from top half (y=0 to y=300, rows 0 to 5)
+                const topHalfAreas = availableAreas.filter(area => area.y <= 5); // Rows 0-5 (y=0 to y=250)
+                if (topHalfAreas.length > 0) {
+                    selectedArea = Phaser.Utils.Array.GetRandom(topHalfAreas);
+                } else {
+                    selectedArea = Phaser.Utils.Array.GetRandom(availableAreas); // Fallback if no top half areas available
+                }
+            } else {
+                // Reveal from bottom half (y=300 to y=600, rows 6 to 11)
+                const bottomHalfAreas = availableAreas.filter(area => area.y >= 6); // Rows 6-11 (y=300 to y=550)
+                if (bottomHalfAreas.length > 0) {
+                    selectedArea = Phaser.Utils.Array.GetRandom(bottomHalfAreas);
+                } else {
+                    selectedArea = Phaser.Utils.Array.GetRandom(availableAreas); // Fallback if no bottom half areas available
+                }
+            }
+
+            if (selectedArea) {
+                const { x, y } = selectedArea;
+                const key = `${x},${y}`;
+                this.revealedAreas.add(key);
+
+                // Create a 50x50 sprite for the revealed area
+                const cropRect = new Phaser.Geom.Rectangle(x * gridSize, y * gridSize, gridSize, gridSize);
+                const revealedSprite = this.add.sprite(x * gridSize + gridSize / 2, y * gridSize + gridSize / 2, 'desert_overlay')
+                    .setOrigin(0.5)
+                    .setCrop(cropRect)
+                    .setAlpha(1); // Fully visible
+
+                // Optionally, you can manage these sprites or let Phaser clean them up
+                this.time.delayedCall(10000, () => revealedSprite.destroy(), [], this); // Clean up after 10 seconds (optional)
+
+                // Check if the entire overlay is revealed
+                if (this.revealedAreas.size === gridWidth * gridHeight) {
+                    this.overlay.setAlpha(1); // Fully reveal overlay when all areas are uncovered
+                }
+            }
         }
 
         showNarrative(text) {
@@ -253,41 +368,8 @@ if (typeof Phaser === 'undefined') {
             if (type === 'office') this.offices++;
             if (type === 'server_rack') this.servers++;
 
-            const groupWidth = 100;
-            const baseX = 200;
-            const officeY = 250;
-            const serverYBase = officeY + 32;
-            const coolingY = 430;
-            const solarY = 450;
-
-            if (type === 'office') {
-                const groupX = baseX + (this.offices - 1) * groupWidth;
-                const office = this.add.sprite(groupX + 32, officeY, 'office').setScale(2);
-                this.builtBuildings.offices.push(office);
-            } else if (type === 'server_rack') {
-                const group = this.offices - 1;
-                const groupX = baseX + group * groupWidth;
-                if (this.builtBuildings.servers.filter(s => s.x === groupX + 32).length < 3) {
-                    const yPos = serverYBase + (this.builtBuildings.servers.filter(s => s.x === groupX + 32).length * 32);
-                    const server = this.add.sprite(groupX + 32, yPos, 'server_rack').setScale(1);
-                    this.builtBuildings.servers.push(server);
-                }
-            } else if (type === 'solar_panel') {
-                const buildingWidth = 16;
-                const startX = 266;
-                const maxPanels = Math.floor((533 - startX) / buildingWidth);
-                const xPos = startX + (this.builtBuildings.solar_panels.length % maxPanels) * buildingWidth;
-                const solar = this.add.sprite(xPos, solarY, 'solar_panel').setScale(1);
-                this.builtBuildings.solar_panels.push(solar);
-                this.electricityGenerated += buildingData.electricity;
-            } else if (type === 'cooling_system') {
-                const buildingWidth = 16;
-                const startX = 266;
-                const maxCooling = Math.floor((533 - startX) / buildingWidth);
-                const xPos = startX + (this.builtBuildings.cooling_systems.length % maxCooling) * buildingWidth;
-                const cooling = this.add.sprite(xPos, coolingY, 'cooling_system').setScale(1);
-                this.builtBuildings.cooling_systems.push(cooling);
-            }
+            // Reveal 50x50 square from overlay
+            this.revealOverlay(type);
 
             this.checkNarrativeEvents();
 
@@ -342,26 +424,4 @@ if (typeof Phaser === 'undefined') {
             this.budgetText = this.add.text(20, 15, 'Budget: $10000', { font: '22px Arial', fill: '#ffffff', fontStyle: 'bold' });
             this.gflopsText = this.add.text(220, 15, 'G-Flops: 0', { font: '22px Arial', fill: '#ffffff', fontStyle: 'bold' });
             this.electricityText = this.add.text(400, 15, 'Electricity: 0 kW', { font: '22px Arial', fill: '#ffffff', fontStyle: 'bold' });
-            this.aiText = this.add.text(600, 15, 'AI: 0', { font: '22px Arial', fill: '#ffffff', fontStyle: 'bold' });
-        }
-
-        update() {
-            const mainScene = this.scene.get('MainScene');
-            this.budgetText.setText(`Budget: $${Math.floor(mainScene.budget)}`);
-            this.gflopsText.setText(`G-Flops: ${Math.floor(mainScene.computingPower)}`);
-            this.electricityText.setText(`Electricity: ${mainScene.electricityGenerated - mainScene.electricityUsed} kW`);
-            this.aiText.setText(`AI: ${mainScene.aiAbility.toFixed(2)}`);
-        }
-    }
-
-    const config = {
-        type: Phaser.AUTO,
-        width: 800,
-        height: 600,
-        scene: [BootScene, MainScene, HUDScene, NarrativeScene],
-        pixelArt: true,
-        backgroundColor: '#000000'
-    };
-
-    const game = new Phaser.Game(config);
-}
+            this.aiText = this.add.text(600, 15
