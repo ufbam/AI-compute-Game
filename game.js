@@ -50,12 +50,10 @@ if (typeof Phaser === 'undefined') {
         preload() {
             this.load.image('desert_backdrop', 'assets/desert_backdrop.png');
             this.load.image('desert_overlay', 'assets/desert_overlay.png');
-            // Original 16x16 for desert (though we won’t use these for placement anymore)
             this.load.image('office', 'assets/office.png');
             this.load.image('server_rack', 'assets/server_rack.png');
             this.load.image('solar_panel', 'assets/solar_panel.png');
             this.load.image('cooling_system', 'assets/cooling_system.png');
-            // High-res 1024x1024 for shop
             this.load.image('office_high', 'assets/office_high.png');
             this.load.image('server_rack_high', 'assets/server_rack_high.png');
             this.load.image('solar_panel_high', 'assets/solar_panel_high.png');
@@ -234,19 +232,11 @@ if (typeof Phaser === 'undefined') {
             if (type === 'solar_panel') {
                 // Reveal from top half (y=0 to y=300, rows 0 to 5)
                 const topHalfAreas = availableAreas.filter(area => area.y <= 5); // Rows 0-5 (y=0 to y=250)
-                if (topHalfAreas.length > 0) {
-                    selectedArea = Phaser.Utils.Array.GetRandom(topHalfAreas);
-                } else {
-                    selectedArea = Phaser.Utils.Array.GetRandom(availableAreas); // Fallback if no top half areas available
-                }
+                selectedArea = Phaser.Utils.Array.GetRandom(topHalfAreas.length > 0 ? topHalfAreas : availableAreas);
             } else {
                 // Reveal from bottom half (y=300 to y=600, rows 6 to 11)
                 const bottomHalfAreas = availableAreas.filter(area => area.y >= 6); // Rows 6-11 (y=300 to y=550)
-                if (bottomHalfAreas.length > 0) {
-                    selectedArea = Phaser.Utils.Array.GetRandom(bottomHalfAreas);
-                } else {
-                    selectedArea = Phaser.Utils.Array.GetRandom(availableAreas); // Fallback if no bottom half areas available
-                }
+                selectedArea = Phaser.Utils.Array.GetRandom(bottomHalfAreas.length > 0 ? bottomHalfAreas : availableAreas);
             }
 
             if (selectedArea) {
@@ -261,8 +251,8 @@ if (typeof Phaser === 'undefined') {
                     .setCrop(cropRect)
                     .setAlpha(1); // Fully visible
 
-                // Optionally, you can manage these sprites or let Phaser clean them up
-                this.time.delayedCall(10000, () => revealedSprite.destroy(), [], this); // Clean up after 10 seconds (optional)
+                // Optionally, clean up sprites after a delay (adjust or remove as needed)
+                this.time.delayedCall(10000, () => revealedSprite.destroy(), [], this);
 
                 // Check if the entire overlay is revealed
                 if (this.revealedAreas.size === gridWidth * gridHeight) {
@@ -325,56 +315,6 @@ if (typeof Phaser === 'undefined') {
             this.updatePowerBars();
             this.updateHeatBar();
             this.checkNarrativeEvents();
-        }
-
-        buyBuilding(type) {
-            const buildingData = this.buildings[type];
-            if (this.budget < buildingData.cost) {
-                this.showPopup('Not enough budget!');
-                return;
-            }
-
-            if (type !== 'office' && this.offices === 0) {
-                this.showPopup('Buy an office first!');
-                return;
-            }
-
-            if (type === 'server_rack' && this.servers >= this.offices * 3) {
-                this.showPopup('Buy another office to add more servers! (3 per office)');
-                return;
-            }
-
-            const netElectricity = this.electricityGenerated - this.electricityUsed;
-            if (this.offices > 0 && (type === 'server_rack' || type === 'cooling_system' || type === 'office') && netElectricity + buildingData.electricity < 0) {
-                this.showPopup('Not enough electricity! Buy more solar panels.');
-                return;
-            }
-
-            const newHeat = this.heatLevel + (buildingData.heat || 0);
-            if (newHeat > this.maxHeat) {
-                this.showPopup('Heat level too high! Buy a cooling system.');
-                return;
-            }
-
-            this.budget -= buildingData.cost;
-            if (buildingData.electricity < 0) {
-                this.electricityUsed += Math.abs(buildingData.electricity);
-            } else {
-                this.electricityGenerated += buildingData.electricity;
-            }
-            this.computingPower += buildingData.computing || 0;
-            this.heatLevel = Math.max(0, newHeat);
-
-            if (type === 'office') this.offices++;
-            if (type === 'server_rack') this.servers++;
-
-            // Reveal 50x50 square from overlay
-            this.revealOverlay(type);
-
-            this.checkNarrativeEvents();
-
-            this.updatePowerBars();
-            this.updateHeatBar();
         }
 
         checkNarrativeEvents() {
