@@ -29,12 +29,14 @@ if (typeof Phaser === 'undefined') {
                 .setOrigin(0.5)
                 .setInteractive({ useHandCursor: true })
                 .on('pointerdown', () => {
+                    console.log('OK button clicked');
                     this.scene.stop();
                     this.onClose();
                 });
 
             this.input.keyboard.on('keydown', (event) => {
                 if (event.key === ' ' || event.key === 'Enter' || event.key === 'Escape') {
+                    console.log('Key pressed to dismiss narrative:', event.key);
                     this.scene.stop();
                     this.onClose();
                 }
@@ -212,6 +214,7 @@ if (typeof Phaser === 'undefined') {
         }
 
         revealOverlay(type) {
+            console.log(`revealOverlay called with type: ${type}`); // Debug log
             const gridSize = 50; // 50x50 pixel squares
             const gridWidth = Math.floor(800 / gridSize); // 16 columns (800 / 50)
             const gridHeight = Math.floor(600 / gridSize); // 12 rows (600 / 50)
@@ -226,7 +229,10 @@ if (typeof Phaser === 'undefined') {
                 }
             }
 
-            if (availableAreas.length === 0) return; // All areas revealed
+            if (availableAreas.length === 0) {
+                console.log('No available areas to reveal.');
+                return; // All areas revealed
+            }
 
             let selectedArea;
             if (type === 'solar_panel') {
@@ -239,25 +245,30 @@ if (typeof Phaser === 'undefined') {
                 selectedArea = Phaser.Utils.Array.GetRandom(bottomHalfAreas.length > 0 ? bottomHalfAreas : availableAreas);
             }
 
-            if (selectedArea) {
-                const { x, y } = selectedArea;
-                const key = `${x},${y}`;
-                this.revealedAreas.add(key);
+            if (!selectedArea) {
+                console.warn('No valid area selected for revealing.');
+                return;
+            }
 
-                // Create a 50x50 sprite for the revealed area
-                const cropRect = new Phaser.Geom.Rectangle(x * gridSize, y * gridSize, gridSize, gridSize);
-                const revealedSprite = this.add.sprite(x * gridSize + gridSize / 2, y * gridSize + gridSize / 2, 'desert_overlay')
-                    .setOrigin(0.5)
-                    .setCrop(cropRect)
-                    .setAlpha(1); // Fully visible
+            const { x, y } = selectedArea;
+            const key = `${x},${y}`;
+            this.revealedAreas.add(key);
 
-                // Optionally, clean up sprites after a delay (adjust or remove as needed)
-                this.time.delayedCall(10000, () => revealedSprite.destroy(), [], this);
+            // Create a 50x50 sprite for the revealed area
+            const cropRect = new Phaser.Geom.Rectangle(x * gridSize, y * gridSize, gridSize, gridSize);
+            const revealedSprite = this.add.sprite(x * gridSize + gridSize / 2, y * gridSize + gridSize / 2, 'desert_backdrop') // Changed to backdrop for visibility
+                .setOrigin(0.5)
+                .setCrop(cropRect)
+                .setAlpha(1); // Fully visible
+            console.log(`Revealed area at (${x}, ${y}) with sprite at (${revealedSprite.x}, ${revealedSprite.y})`); // Debug log
 
-                // Check if the entire overlay is revealed
-                if (this.revealedAreas.size === gridWidth * gridHeight) {
-                    this.overlay.setAlpha(1); // Fully reveal overlay when all areas are uncovered
-                }
+            // Optionally clean up sprites after a delay (adjust or remove as needed)
+            this.time.delayedCall(10000, () => revealedSprite.destroy(), [], this);
+
+            // Check if the entire overlay is revealed
+            if (this.revealedAreas.size === gridWidth * gridHeight) {
+                this.overlay.setAlpha(1); // Fully reveal overlay when all areas are uncovered
+                console.log('Entire overlay revealed.');
             }
         }
 
