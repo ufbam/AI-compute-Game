@@ -1,7 +1,6 @@
 if (typeof Phaser === 'undefined') {
     console.error('Phaser is not loaded. Check the script tag in index.html.');
 } else {
-    // **NarrativeScene**: Displays pop-up narrative text with a dismissible OK button
     class NarrativeScene extends Phaser.Scene {
         constructor() {
             super('NarrativeScene');
@@ -13,17 +12,13 @@ if (typeof Phaser === 'undefined') {
         }
 
         create() {
-            // Background rectangle for narrative
             this.add.rectangle(400, 300, 600, 200, 0x333333).setOrigin(0.5);
-
-            // Narrative text
             this.add.text(400, 260, this.text, {
                 font: '16px Arial',
                 fill: '#ffffff',
                 wordWrap: { width: 560, useAdvancedWrap: true }
             }).setOrigin(0.5);
 
-            // OK button to dismiss narrative
             this.okButton = this.add.text(400, 480, 'OK', {
                 font: '20px Arial',
                 fill: '#00ff00',
@@ -33,15 +28,12 @@ if (typeof Phaser === 'undefined') {
                 .setOrigin(0.5)
                 .setInteractive({ useHandCursor: true })
                 .on('pointerdown', () => {
-                    console.log('OK button clicked');
                     this.scene.stop();
                     this.onClose();
                 });
 
-            // Keyboard dismissal (Space, Enter, Escape)
             this.input.keyboard.on('keydown', (event) => {
                 if (event.key === ' ' || event.key === 'Enter' || event.key === 'Escape') {
-                    console.log('Key pressed to dismiss narrative:', event.key);
                     this.scene.stop();
                     this.onClose();
                 }
@@ -49,7 +41,6 @@ if (typeof Phaser === 'undefined') {
         }
     }
 
-    // **BootScene**: Loads all game assets
     class BootScene extends Phaser.Scene {
         constructor() {
             super('BootScene');
@@ -57,7 +48,7 @@ if (typeof Phaser === 'undefined') {
 
         preload() {
             this.load.image('desert_backdrop', 'assets/desert_backdrop.png');
-            this.load.image('desert_overlay', 'assets/desert_overlay.png'); // Ensure this matches desert_backdrop.png dimensions
+            this.load.image('desert_overlay', 'assets/desert_overlay.png');
             this.load.image('office', 'assets/office.png');
             this.load.image('server_rack', 'assets/server_rack.png');
             this.load.image('solar_panel', 'assets/solar_panel.png');
@@ -73,18 +64,17 @@ if (typeof Phaser === 'undefined') {
         }
     }
 
-    // **MainScene**: Core game logic, including building placement and overlay management
     class MainScene extends Phaser.Scene {
         constructor() {
             super('MainScene');
         }
 
         create() {
-            // Set up background and overlay
+            // Background and overlay
             this.add.image(400, 300, 'desert_backdrop').setOrigin(0.5, 0.5).setDepth(0);
             this.overlay = this.add.image(400, 300, 'desert_overlay').setOrigin(0.5, 0.5).setAlpha(0).setDepth(0);
 
-            // Initialize game variables
+            // Game state
             this.budget = 10000;
             this.electricityGenerated = 0;
             this.electricityUsed = 0;
@@ -104,11 +94,11 @@ if (typeof Phaser === 'undefined') {
                 cooling_system: { cost: 1500, electricity: -5, heat: -15, sprite: 'cooling_system', shopSprite: 'cooling_system_high', tooltip: 'Reduces heat from servers.' }
             };
 
-            // HUD Panel
+            // Top HUD
             const hudY = 0;
             this.add.rectangle(400, hudY + 20, 800, 40, 0x333333).setOrigin(0.5, 0.5).setDepth(10);
 
-            // Power Bars
+            // Power and Heat Bars (HUD)
             this.powerBarOutlineUsage = this.add.rectangle(20, 400, 20, 200, 0xffffff, 2).setOrigin(0, 1).setDepth(10);
             this.powerBarUsage = this.add.graphics().setDepth(10);
             this.add.text(30, 570, 'Usage', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5).setDepth(10);
@@ -116,12 +106,11 @@ if (typeof Phaser === 'undefined') {
             this.powerBarOutput = this.add.graphics().setDepth(10);
             this.add.text(30, 590, 'Output', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5).setDepth(10);
 
-            // Heat Bar
             this.heatBarOutline = this.add.rectangle(760, 400, 20, 200, 0xffffff, 2).setOrigin(0, 1).setDepth(10);
             this.heatBar = this.add.graphics().setDepth(10);
             this.add.text(760, 580, 'Heat', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5).setDepth(10);
 
-            // Shop Panel
+            // Shop HUD
             const shopY = 530;
             this.add.rectangle(400, shopY + 50, 800, 140, 0x333333).setOrigin(0.5, 0.5).setDepth(10);
             this.shopHUD = this.add.group();
@@ -150,7 +139,7 @@ if (typeof Phaser === 'undefined') {
             // Track revealed overlay areas
             this.revealedAreas = new Set();
 
-            // Resource update timer
+            // Update resources every second
             this.time.addEvent({
                 delay: 1000,
                 callback: this.updateResources,
@@ -159,7 +148,7 @@ if (typeof Phaser === 'undefined') {
             });
 
             // Initial narrative
-            this.showNarrative('Your mission, should you choose to accept it (and let’s be honest, you’re already here), is to build the most powerful AI compute cluster ever, hidden between desert hills like a secret government base gone rogue. But beware—your servers might overheat, your AI might get ideas, and the desert sun has a wicked sense of humor. Start by buying an office, or risk being outsmarted by a sentient chatbot with a penchant for bad puns.');
+            this.showNarrative('Your mission is to build a powerful AI compute cluster hidden in the desert. Start by buying an office.');
 
             this.narrativeShownHeat = false;
             this.narrativeShownAI = false;
@@ -218,45 +207,51 @@ if (typeof Phaser === 'undefined') {
         }
 
         revealOverlay(type) {
-            const gridSize = 50; // 50x50 pixel grid
-            const gridWidth = Math.floor(800 / gridSize); // 16 columns
-            const gridHeight = Math.floor(600 / gridSize); // 12 rows
+            const gridSize = 200; // 200x200 pixel squares
+            const gridWidth = Math.floor(800 / gridSize); // 4 columns (800 / 200)
+            const gridHeight = Math.floor(600 / gridSize); // 3 rows (600 / 200), but we'll limit to y=530
 
+            // Define available areas based on building type
             let availableAreas = [];
-            for (let y = 0; y < gridHeight; y++) {
+            if (type === 'solar_panel') {
+                // Top half: y=0 to y=200 (row 0)
                 for (let x = 0; x < gridWidth; x++) {
-                    const key = `${x},${y}`;
+                    const key = `${x},0`;
                     if (!this.revealedAreas.has(key)) {
-                        availableAreas.push({ x, y });
+                        availableAreas.push({ x: x, y: 0 });
+                    }
+                }
+            } else {
+                // Bottom half: y=200 to y=400 (rows 1 and 2, stopping before shop HUD at y=530)
+                for (let y = 1; y <= 2; y++) {
+                    for (let x = 0; x < gridWidth; x++) {
+                        const key = `${x},${y}`;
+                        if (!this.revealedAreas.has(key)) {
+                            availableAreas.push({ x: x, y: y });
+                        }
                     }
                 }
             }
 
-            if (availableAreas.length === 0) return;
+            if (availableAreas.length === 0) return; // No more areas to reveal
 
-            let selectedArea;
-            if (type === 'solar_panel') {
-                const topHalfAreas = availableAreas.filter(area => area.y <= 5);
-                selectedArea = Phaser.Utils.Array.GetRandom(topHalfAreas.length > 0 ? topHalfAreas : availableAreas);
-            } else {
-                const bottomHalfAreas = availableAreas.filter(area => area.y >= 6);
-                selectedArea = Phaser.Utils.Array.GetRandom(bottomHalfAreas.length > 0 ? bottomHalfAreas : availableAreas);
-            }
+            // Pick a random unrevealed area
+            const selectedArea = Phaser.Utils.Array.GetRandom(availableAreas);
+            const { x, y } = selectedArea;
+            const key = `${x},${y}`;
+            this.revealedAreas.add(key);
 
-            if (selectedArea) {
-                const { x, y } = selectedArea;
-                const key = `${x},${y}`;
-                this.revealedAreas.add(key);
+            // Position and crop the revealed square
+            const spriteX = x * gridSize + gridSize / 2;
+            const spriteY = y * gridSize + gridSize / 2;
+            const cropRect = new Phaser.Geom.Rectangle(x * gridSize, y * gridSize, gridSize, gridSize);
 
-                const spriteX = x * gridSize + gridSize / 2;
-                const spriteY = y * gridSize + gridSize / 2;
-                const cropRect = new Phaser.Geom.Rectangle(x * gridSize, y * gridSize, gridSize, gridSize);
-                this.add.sprite(spriteX, spriteY, 'desert_overlay')
-                    .setOrigin(0.5, 0.5)
-                    .setCrop(cropRect)
-                    .setAlpha(1)
-                    .setDepth(0); // Stays under HUD
-            }
+            // Add the revealed sprite at depth 0 (under HUD)
+            this.add.sprite(spriteX, spriteY, 'desert_overlay')
+                .setOrigin(0.5, 0.5)
+                .setCrop(cropRect)
+                .setAlpha(1)
+                .setDepth(0);
         }
 
         showNarrative(text) {
@@ -273,20 +268,16 @@ if (typeof Phaser === 'undefined') {
             const usageColor = usagePercentage > 0.8 ? 0xff0000 : 0x00ff00;
 
             this.powerBarUsage.clear();
-            this.powerBarUsage.lineStyle(2, 0xffffff);
             this.powerBarUsage.fillStyle(usageColor, 1);
             this.powerBarUsage.fillRect(20, 400 - barHeight, 16, barHeight);
-            this.powerBarUsage.strokeRect(20, 400 - barHeight, 16, barHeight);
 
             const outputPercentage = Math.min(this.electricityGenerated / this.maxElectricity, 1);
             const outputBarHeight = Math.max(0, 200 * outputPercentage);
             const outputColor = outputPercentage > 0.8 ? 0xff0000 : 0x00ff00;
 
             this.powerBarOutput.clear();
-            this.powerBarOutput.lineStyle(2, 0xffffff);
             this.powerBarOutput.fillStyle(outputColor, 1);
             this.powerBarOutput.fillRect(40, 400 - outputBarHeight, 16, outputBarHeight);
-            this.powerBarOutput.strokeRect(40, 400 - outputBarHeight, 16, outputBarHeight);
         }
 
         updateHeatBar() {
@@ -295,10 +286,8 @@ if (typeof Phaser === 'undefined') {
             const color = heatPercentage > 0.8 ? 0xff0000 : 0xffa500;
 
             this.heatBar.clear();
-            this.heatBar.lineStyle(2, 0xffffff);
             this.heatBar.fillStyle(color, 1);
             this.heatBar.fillRect(760, 400 - barHeight, 16, barHeight);
-            this.heatBar.strokeRect(760, 400 - barHeight, 16, barHeight);
         }
 
         updateResources() {
@@ -318,15 +307,15 @@ if (typeof Phaser === 'undefined') {
         checkNarrativeEvents() {
             if (this.heatLevel > 40 && !this.narrativeShownHeat) {
                 this.narrativeShownHeat = true;
-                this.showNarrative('Oh no, your servers are positively simmering—think of a sunburned lizard in a tuxedo! The desert heat’s turning your compute cluster into a toaster. Buy a cooling system, or risk your AI developing a taste for melted silicon. Click OK to continue.');
+                this.showNarrative('Your servers are overheating! Buy a cooling system.');
             }
             if (this.aiAbility > 75 && !this.narrativeShownAI) {
                 this.narrativeShownAI = true;
-                this.showNarrative('Your AI’s getting cheeky—whistling show tunes and suggesting it’s smarter than you. It’s now powerful enough to calculate the meaning of life, the universe, and why your budget’s always short. Keep expanding, but don’t let it take over… or start writing its memoirs. Click OK to proceed.');
+                this.showNarrative('Your AI is getting smarter... Keep an eye on it!');
             }
             if (this.electricityUsed > this.electricityGenerated && !this.narrativeShownPower) {
                 this.narrativeShownPower = true;
-                this.showNarrative('Uh-oh, your power usage has outpaced your solar panels—imagine a camel running out of water in a sandstorm! Better slap down some more solar arrays, or your servers will dim like a forgotten disco ball. Click OK to soldier on.');
+                this.showNarrative('Power shortage! Add more solar panels.');
             }
         }
 
@@ -353,7 +342,6 @@ if (typeof Phaser === 'undefined') {
         }
     }
 
-    // **HUDScene**: Displays budget, computing power, electricity, and AI stats
     class HUDScene extends Phaser.Scene {
         constructor() {
             super('HUDScene');
@@ -375,7 +363,6 @@ if (typeof Phaser === 'undefined') {
         }
     }
 
-    // **Game Configuration**: Sets up Phaser with all scenes
     const config = {
         type: Phaser.AUTO,
         width: 800,
