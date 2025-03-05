@@ -1,6 +1,7 @@
 if (typeof Phaser === 'undefined') {
     console.error('Phaser is not loaded. Check the script tag in index.html.');
 } else {
+    // **NarrativeScene**: Displays pop-up narrative text with a dismissible OK button
     class NarrativeScene extends Phaser.Scene {
         constructor() {
             super('NarrativeScene');
@@ -12,14 +13,17 @@ if (typeof Phaser === 'undefined') {
         }
 
         create() {
+            // Background rectangle for narrative
             this.add.rectangle(400, 300, 600, 200, 0x333333).setOrigin(0.5);
 
+            // Narrative text
             this.add.text(400, 260, this.text, {
                 font: '16px Arial',
                 fill: '#ffffff',
                 wordWrap: { width: 560, useAdvancedWrap: true }
             }).setOrigin(0.5);
 
+            // OK button to dismiss narrative
             this.okButton = this.add.text(400, 480, 'OK', {
                 font: '20px Arial',
                 fill: '#00ff00',
@@ -34,6 +38,7 @@ if (typeof Phaser === 'undefined') {
                     this.onClose();
                 });
 
+            // Keyboard dismissal (Space, Enter, Escape)
             this.input.keyboard.on('keydown', (event) => {
                 if (event.key === ' ' || event.key === 'Enter' || event.key === 'Escape') {
                     console.log('Key pressed to dismiss narrative:', event.key);
@@ -44,6 +49,7 @@ if (typeof Phaser === 'undefined') {
         }
     }
 
+    // **BootScene**: Loads all game assets
     class BootScene extends Phaser.Scene {
         constructor() {
             super('BootScene');
@@ -51,7 +57,7 @@ if (typeof Phaser === 'undefined') {
 
         preload() {
             this.load.image('desert_backdrop', 'assets/desert_backdrop.png');
-            this.load.image('desert_overlay', 'assets/desert_overlay.png');
+            this.load.image('desert_overlay', 'assets/desert_overlay.png'); // Ensure this matches desert_backdrop.png dimensions
             this.load.image('office', 'assets/office.png');
             this.load.image('server_rack', 'assets/server_rack.png');
             this.load.image('solar_panel', 'assets/solar_panel.png');
@@ -67,14 +73,18 @@ if (typeof Phaser === 'undefined') {
         }
     }
 
+    // **MainScene**: Core game logic, including building placement and overlay management
     class MainScene extends Phaser.Scene {
         constructor() {
             super('MainScene');
         }
 
         create() {
-            this.add.image(400, 300, 'desert_backdrop').setOrigin(0.5, 0.5);
+            // Set up background and overlay
+            this.add.image(400, 300, 'desert_backdrop').setOrigin(0.5, 0.5).setDepth(0);
+            this.overlay = this.add.image(400, 300, 'desert_overlay').setOrigin(0.5, 0.5).setAlpha(0).setDepth(0);
 
+            // Initialize game variables
             this.budget = 10000;
             this.electricityGenerated = 0;
             this.electricityUsed = 0;
@@ -86,6 +96,7 @@ if (typeof Phaser === 'undefined') {
             this.offices = 0;
             this.servers = 0;
 
+            // Building data
             this.buildings = {
                 office: { cost: 2000, electricity: -10, computing: 0, sprite: 'office', shopSprite: 'office_high', tooltip: 'Required first. Allows 3 servers per office.' },
                 server_rack: { cost: 1000, electricity: -5, computing: 10, heat: 10, sprite: 'server_rack', shopSprite: 'server_rack_high', tooltip: 'Boosts computing power, uses power and generates heat.' },
@@ -93,8 +104,26 @@ if (typeof Phaser === 'undefined') {
                 cooling_system: { cost: 1500, electricity: -5, heat: -15, sprite: 'cooling_system', shopSprite: 'cooling_system_high', tooltip: 'Reduces heat from servers.' }
             };
 
+            // HUD Panel
+            const hudY = 0;
+            this.add.rectangle(400, hudY + 20, 800, 40, 0x333333).setOrigin(0.5, 0.5).setDepth(10);
+
+            // Power Bars
+            this.powerBarOutlineUsage = this.add.rectangle(20, 400, 20, 200, 0xffffff, 2).setOrigin(0, 1).setDepth(10);
+            this.powerBarUsage = this.add.graphics().setDepth(10);
+            this.add.text(30, 570, 'Usage', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5).setDepth(10);
+            this.powerBarOutlineOutput = this.add.rectangle(40, 400, 20, 200, 0xffffff, 2).setOrigin(0, 1).setDepth(10);
+            this.powerBarOutput = this.add.graphics().setDepth(10);
+            this.add.text(30, 590, 'Output', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5).setDepth(10);
+
+            // Heat Bar
+            this.heatBarOutline = this.add.rectangle(760, 400, 20, 200, 0xffffff, 2).setOrigin(0, 1).setDepth(10);
+            this.heatBar = this.add.graphics().setDepth(10);
+            this.add.text(760, 580, 'Heat', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5).setDepth(10);
+
+            // Shop Panel
             const shopY = 530;
-            this.add.rectangle(400, shopY + 50, 800, 140, 0x333333).setOrigin(0.5, 0.5);
+            this.add.rectangle(400, shopY + 50, 800, 140, 0x333333).setOrigin(0.5, 0.5).setDepth(10);
             this.shopHUD = this.add.group();
             const shopWidth = 600;
             const startX = 400 - (shopWidth / 2);
@@ -111,42 +140,17 @@ if (typeof Phaser === 'undefined') {
                     .setInteractive({ useHandCursor: true })
                     .on('pointerdown', () => this.buyBuilding(item.type))
                     .on('pointerover', () => this.showTooltip(item.x, shopY - 80, buildingData.tooltip))
-                    .on('pointerout', () => this.hideTooltip());
-                this.add.text(item.x, shopY + 40, item.type.replace('_', ' '), { font: '14px Arial', fill: '#ffffff' }).setOrigin(0.5);
-                this.add.text(item.x, shopY + 60, `$${buildingData.cost}`, { font: '12px Arial', fill: '#ffff00' }).setOrigin(0.5);
+                    .on('pointerout', () => this.hideTooltip())
+                    .setDepth(10);
+                this.add.text(item.x, shopY + 40, item.type.replace('_', ' '), { font: '14px Arial', fill: '#ffffff' }).setOrigin(0.5).setDepth(10);
+                this.add.text(item.x, shopY + 60, `$${buildingData.cost}`, { font: '12px Arial', fill: '#ffff00' }).setOrigin(0.5).setDepth(10);
                 this.shopHUD.add(button);
             });
 
-            // HUD Panel at Top
-            const hudY = 0;
-            const hudPanel = this.add.rectangle(400, hudY + 20, 800, 40, 0x333333);
-            hudPanel.setOrigin(0.5, 0.5);
+            // Track revealed overlay areas
+            this.revealedAreas = new Set();
 
-            // Power Bars (Left: Usage and Output)
-            this.powerBarOutlineUsage = this.add.rectangle(20, 400, 20, 200, 0xffffff, 2);
-            this.powerBarOutlineUsage.setOrigin(0, 1);
-            this.powerBarUsage = this.add.graphics();
-            this.add.text(30, 570, 'Usage', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5);
-
-            this.powerBarOutlineOutput = this.add.rectangle(40, 400, 20, 200, 0xffffff, 2);
-            this.powerBarOutlineOutput.setOrigin(0, 1);
-            this.powerBarOutput = this.add.graphics();
-            this.add.text(30, 590, 'Output', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5);
-
-            // Heat Bar (Right, x=760)
-            this.heatBarOutline = this.add.rectangle(760, 400, 20, 200, 0xffffff, 2);
-            this.heatBarOutline.setOrigin(0, 1);
-            this.heatBar = this.add.graphics();
-            this.add.text(760, 580, 'Heat', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5);
-            this.updatePowerBars();
-            this.updateHeatBar();
-
-            // Overlay for revealing
-            this.overlay = this.add.image(400, 300, 'desert_overlay').setOrigin(0.5, 0.5).setAlpha(0); // Initially invisible
-            this.revealedAreas = new Set(); // Track revealed 50x50 squares
-
-            this.builtBuildings = { offices: [], servers: [], solar_panels: [], cooling_systems: [] };
-
+            // Resource update timer
             this.time.addEvent({
                 delay: 1000,
                 callback: this.updateResources,
@@ -154,6 +158,7 @@ if (typeof Phaser === 'undefined') {
                 loop: true
             });
 
+            // Initial narrative
             this.showNarrative('Your mission, should you choose to accept it (and let’s be honest, you’re already here), is to build the most powerful AI compute cluster ever, hidden between desert hills like a secret government base gone rogue. But beware—your servers might overheat, your AI might get ideas, and the desert sun has a wicked sense of humor. Start by buying an office, or risk being outsmarted by a sentient chatbot with a penchant for bad puns.');
 
             this.narrativeShownHeat = false;
@@ -204,7 +209,6 @@ if (typeof Phaser === 'undefined') {
             if (type === 'office') this.offices++;
             if (type === 'server_rack') this.servers++;
 
-            // Reveal 50x50 square from overlay
             this.revealOverlay(type);
 
             this.checkNarrativeEvents();
@@ -214,10 +218,9 @@ if (typeof Phaser === 'undefined') {
         }
 
         revealOverlay(type) {
-            console.log(`revealOverlay called with type: ${type}`); // Debug log
-            const gridSize = 50; // 50x50 pixel squares
-            const gridWidth = Math.floor(800 / gridSize); // 16 columns (800 / 50)
-            const gridHeight = Math.floor(600 / gridSize); // 12 rows (600 / 50)
+            const gridSize = 50; // 50x50 pixel grid
+            const gridWidth = Math.floor(800 / gridSize); // 16 columns
+            const gridHeight = Math.floor(600 / gridSize); // 12 rows
 
             let availableAreas = [];
             for (let y = 0; y < gridHeight; y++) {
@@ -229,46 +232,30 @@ if (typeof Phaser === 'undefined') {
                 }
             }
 
-            if (availableAreas.length === 0) {
-                console.log('No available areas to reveal.');
-                return; // All areas revealed
-            }
+            if (availableAreas.length === 0) return;
 
             let selectedArea;
             if (type === 'solar_panel') {
-                // Reveal from top half (y=0 to y=300, rows 0 to 5)
-                const topHalfAreas = availableAreas.filter(area => area.y <= 5); // Rows 0-5 (y=0 to y=250)
+                const topHalfAreas = availableAreas.filter(area => area.y <= 5);
                 selectedArea = Phaser.Utils.Array.GetRandom(topHalfAreas.length > 0 ? topHalfAreas : availableAreas);
             } else {
-                // Reveal from bottom half (y=300 to y=600, rows 6 to 11)
-                const bottomHalfAreas = availableAreas.filter(area => area.y >= 6); // Rows 6-11 (y=300 to y=550)
+                const bottomHalfAreas = availableAreas.filter(area => area.y >= 6);
                 selectedArea = Phaser.Utils.Array.GetRandom(bottomHalfAreas.length > 0 ? bottomHalfAreas : availableAreas);
             }
 
-            if (!selectedArea) {
-                console.warn('No valid area selected for revealing.');
-                return;
-            }
+            if (selectedArea) {
+                const { x, y } = selectedArea;
+                const key = `${x},${y}`;
+                this.revealedAreas.add(key);
 
-            const { x, y } = selectedArea;
-            const key = `${x},${y}`;
-            this.revealedAreas.add(key);
-
-            // Create a 50x50 sprite for the revealed area
-            const cropRect = new Phaser.Geom.Rectangle(x * gridSize, y * gridSize, gridSize, gridSize);
-            const revealedSprite = this.add.sprite(x * gridSize + gridSize / 2, y * gridSize + gridSize / 2, 'desert_backdrop') // Changed to backdrop for visibility
-                .setOrigin(0.5)
-                .setCrop(cropRect)
-                .setAlpha(1); // Fully visible
-            console.log(`Revealed area at (${x}, ${y}) with sprite at (${revealedSprite.x}, ${revealedSprite.y})`); // Debug log
-
-            // Optionally clean up sprites after a delay (adjust or remove as needed)
-            this.time.delayedCall(10000, () => revealedSprite.destroy(), [], this);
-
-            // Check if the entire overlay is revealed
-            if (this.revealedAreas.size === gridWidth * gridHeight) {
-                this.overlay.setAlpha(1); // Fully reveal overlay when all areas are uncovered
-                console.log('Entire overlay revealed.');
+                const spriteX = x * gridSize + gridSize / 2;
+                const spriteY = y * gridSize + gridSize / 2;
+                const cropRect = new Phaser.Geom.Rectangle(x * gridSize, y * gridSize, gridSize, gridSize);
+                this.add.sprite(spriteX, spriteY, 'desert_overlay')
+                    .setOrigin(0.5, 0.5)
+                    .setCrop(cropRect)
+                    .setAlpha(1)
+                    .setDepth(0); // Stays under HUD
             }
         }
 
@@ -366,6 +353,7 @@ if (typeof Phaser === 'undefined') {
         }
     }
 
+    // **HUDScene**: Displays budget, computing power, electricity, and AI stats
     class HUDScene extends Phaser.Scene {
         constructor() {
             super('HUDScene');
@@ -387,6 +375,7 @@ if (typeof Phaser === 'undefined') {
         }
     }
 
+    // **Game Configuration**: Sets up Phaser with all scenes
     const config = {
         type: Phaser.AUTO,
         width: 800,
