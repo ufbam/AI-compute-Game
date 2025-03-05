@@ -1,7 +1,7 @@
 if (typeof Phaser === 'undefined') {
     console.error('Phaser is not loaded. Check the script tag in index.html.');
 } else {
-    // Scene for narrative popups.
+    // Narrative popup scene.
     class NarrativeScene extends Phaser.Scene {
         constructor() {
             super('NarrativeScene');
@@ -34,7 +34,7 @@ if (typeof Phaser === 'undefined') {
         }
     }
 
-    // Boot scene for preloading assets.
+    // Boot scene to preload assets.
     class BootScene extends Phaser.Scene {
         constructor() {
             super('BootScene');
@@ -67,30 +67,30 @@ if (typeof Phaser === 'undefined') {
             // Add the overlay image.
             this.overlay = this.add.image(400, 300, 'desert_overlay').setOrigin(0.5).setDepth(1);
 
-            // Create a Graphics object for the mask. We don't add it to the display list.
+            // Create a Graphics object for the mask (not added to the display list).
             this.overlayMaskGraphics = this.make.graphics({ x: 0, y: 0, add: false });
-            // Ensure the mask graphics is initially cleared.
+            // Draw a base mask that covers the full area with zero alpha.
             this.overlayMaskGraphics.clear();
+            this.overlayMaskGraphics.fillStyle(0xffffff, 0);
+            this.overlayMaskGraphics.fillRect(0, 0, 800, 600);
 
-            // Create the geometry mask, force auto-update so changes are applied immediately.
+            // Create a GeometryMask from the graphics and force auto-update.
             let mask = new Phaser.Display.Masks.GeometryMask(this, this.overlayMaskGraphics);
             mask.autoUpdate = true;
             this.overlay.setMask(mask);
 
-            // Game resources and limits.
+            // Initialize game resources.
             this.budget = 10000;
             this.electricityGenerated = 0;
             this.electricityUsed = 0;
             this.computingPower = 0;
             this.aiAbility = 0;
             this.heatLevel = 0;
-            this.maxHeat = 100;         // Gameplay threshold for heat.
-            this.maxElectricity = 100;  // Gameplay threshold for electricity.
-
-            // For visual bars, use higher maximum values so they fill in smaller increments.
+            this.maxHeat = 100;
+            this.maxElectricity = 100;
+            // For the visual bars, use higher maximums for slower increments.
             this.barMaxHeat = 400;
             this.barMaxElectricity = 400;
-
             this.offices = 0;
             this.servers = 0;
 
@@ -181,16 +181,15 @@ if (typeof Phaser === 'undefined') {
                 .setOrigin(0.5).setDepth(10);
 
             // --- Overlay Mask Grid Setup ---
-            // We divide the overlay image into 20 cells using a 5x4 grid.
-            // With an 800×600 image, each cell is 160px wide and 150px tall.
+            // Divide the 800×600 overlay into 20 cells (5 columns × 4 rows).
             this.gridWidth = 5;
             this.gridHeight = 4;
             this.cellWidth = 800 / this.gridWidth;   // 160 pixels.
             this.cellHeight = 600 / this.gridHeight;   // 150 pixels.
-            // Track which cells (keys in the format "col,row") have been revealed.
+            // Set to track revealed cells (keys are "col,row").
             this.revealedCells = new Set();
 
-            // Update game resources every second.
+            // Update resources every second.
             this.time.addEvent({
                 delay: 1000,
                 callback: this.updateResources,
@@ -198,7 +197,7 @@ if (typeof Phaser === 'undefined') {
                 loop: true
             });
 
-            // Start with a narrative prompt.
+            // Show starting narrative.
             this.showNarrative('Build an AI compute cluster in the desert. Start with an office.');
             this.scene.launch('HUDScene');
         }
@@ -239,13 +238,13 @@ if (typeof Phaser === 'undefined') {
             if (type === 'office') this.offices++;
             if (type === 'server_rack') this.servers++;
 
-            // Reveal one new cell in the overlay mask.
+            // Reveal one new cell from the overlay mask.
             this.revealOverlayCell();
             this.updateBars();
         }
 
         revealOverlayCell() {
-            // Gather all unrevealed cell positions.
+            // Find all unrevealed cell positions.
             const availableCells = [];
             for (let col = 0; col < this.gridWidth; col++) {
                 for (let row = 0; row < this.gridHeight; row++) {
@@ -255,13 +254,17 @@ if (typeof Phaser === 'undefined') {
                     }
                 }
             }
-            // If all cells are revealed, do nothing.
             if (availableCells.length === 0) return;
-            // Choose a random unrevealed cell.
+            // Pick a random unrevealed cell.
             const cell = Phaser.Utils.Array.GetRandom(availableCells);
             this.revealedCells.add(cell.key);
-            // Clear and redraw the mask graphics with all revealed cells.
+
+            // Rebuild the mask:
+            // First, redraw the base mask covering the entire overlay with alpha 0.
             this.overlayMaskGraphics.clear();
+            this.overlayMaskGraphics.fillStyle(0xffffff, 0);
+            this.overlayMaskGraphics.fillRect(0, 0, 800, 600);
+            // Then, draw all revealed cells with alpha 1.
             this.overlayMaskGraphics.fillStyle(0xffffff, 1);
             this.revealedCells.forEach(key => {
                 const [col, row] = key.split(',').map(Number);
@@ -272,23 +275,24 @@ if (typeof Phaser === 'undefined') {
                     this.cellHeight
                 );
             });
+
             console.log(`Revealed overlay cell at column ${cell.col}, row ${cell.row}`);
         }
 
         updateBars() {
-            // Update electricity usage bar.
+            // Electricity usage bar.
             const usageHeight = Math.min(this.electricityUsed / this.barMaxElectricity, 1) * 200;
             this.powerBarUsage.clear();
             this.powerBarUsage.fillStyle(usageHeight > 160 ? 0xff0000 : 0x00ff00, 1);
             this.powerBarUsage.fillRect(20, 400 - usageHeight, 16, usageHeight);
 
-            // Update electricity generation bar.
+            // Electricity generation bar.
             const outputHeight = Math.min(this.electricityGenerated / this.barMaxElectricity, 1) * 200;
             this.powerBarOutput.clear();
             this.powerBarOutput.fillStyle(outputHeight > 160 ? 0xff0000 : 0x00ff00, 1);
             this.powerBarOutput.fillRect(40, 400 - outputHeight, 16, outputHeight);
 
-            // Update heat bar.
+            // Heat bar.
             const heatHeight = Math.min(this.heatLevel / this.barMaxHeat, 1) * 200;
             this.heatBar.clear();
             this.heatBar.fillStyle(heatHeight > 160 ? 0xff0000 : 0xffa500, 1);
@@ -334,7 +338,7 @@ if (typeof Phaser === 'undefined') {
         }
     }
 
-    // HUD scene for displaying resources.
+    // HUD scene for resource display.
     class HUDScene extends Phaser.Scene {
         constructor() {
             super('HUDScene');
