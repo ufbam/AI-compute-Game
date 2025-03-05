@@ -59,23 +59,20 @@ if (typeof Phaser === 'undefined') {
         }
 
         create() {
-            // Center backdrop and overlay
             this.add.image(400, 300, 'desert_backdrop').setOrigin(0.5).setDepth(0);
             this.overlay = this.add.image(400, 300, 'desert_overlay').setOrigin(0.5).setAlpha(0).setDepth(0);
 
-            // Game state
             this.budget = 10000;
             this.electricityGenerated = 0;
             this.electricityUsed = 0;
             this.computingPower = 0;
             this.aiAbility = 0;
             this.heatLevel = 0;
-            this.maxHeat = 50;
-            this.maxElectricity = 50;
+            this.maxHeat = 100; // Increased for smaller increments
+            this.maxElectricity = 100; // Increased for smaller increments
             this.offices = 0;
             this.servers = 0;
 
-            // Building data
             this.buildings = {
                 office: { cost: 2000, electricity: -10, computing: 0, shopSprite: 'office_high', tooltip: 'Required first. Allows 3 servers per office.' },
                 server_rack: { cost: 1000, electricity: -5, computing: 10, heat: 10, shopSprite: 'server_rack_high', tooltip: 'Boosts computing power, uses power and generates heat.' },
@@ -83,7 +80,6 @@ if (typeof Phaser === 'undefined') {
                 cooling_system: { cost: 1500, electricity: -5, heat: -15, shopSprite: 'cooling_system_high', tooltip: 'Reduces heat from servers.' }
             };
 
-            // Shop HUD
             const shopY = 530;
             this.add.rectangle(400, shopY + 50, 800, 140, 0x333333).setOrigin(0.5).setDepth(10);
             const shopItems = [
@@ -105,7 +101,6 @@ if (typeof Phaser === 'undefined') {
                 this.add.text(item.x, shopY + 60, `$${data.cost}`, { font: '12px Arial', fill: '#ffff00' }).setOrigin(0.5).setDepth(10);
             });
 
-            // Power and Heat bars
             this.powerBarUsage = this.add.graphics().setDepth(10);
             this.powerBarOutlineUsage = this.add.rectangle(20, 400, 20, 200, 0xffffff, 0).setOrigin(0, 1).setStrokeStyle(2, 0xffffff).setDepth(10);
             this.add.text(30, 570, 'Usage', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5).setDepth(10);
@@ -117,11 +112,9 @@ if (typeof Phaser === 'undefined') {
             this.heatBarOutline = this.add.rectangle(760, 400, 20, 200, 0xffffff, 0).setOrigin(0, 1).setStrokeStyle(2, 0xffffff).setDepth(10);
             this.add.text(760, 580, 'Heat', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5).setDepth(10);
 
-            // Reveal tracking
             this.revealedAreas = new Set();
             this.revealedSprites = [];
 
-            // Update loop
             this.time.addEvent({
                 delay: 1000,
                 callback: this.updateResources,
@@ -129,7 +122,6 @@ if (typeof Phaser === 'undefined') {
                 loop: true
             });
 
-            // Start narrative and HUD
             this.showNarrative('Build an AI compute cluster in the desert. Start with an office.');
             this.scene.launch('HUDScene');
         }
@@ -178,6 +170,7 @@ if (typeof Phaser === 'undefined') {
             let availableAreas = [];
 
             if (type === 'solar_panel') {
+                // Upper half: top row (y=0)
                 for (let x = 0; x < gridWidth; x++) {
                     const key = `${x},0`;
                     if (!this.revealedAreas.has(key)) {
@@ -185,6 +178,7 @@ if (typeof Phaser === 'undefined') {
                     }
                 }
             } else {
+                // Lower half: middle and bottom rows (y=1, y=2)
                 for (let y = 1; y < gridHeight; y++) {
                     for (let x = 0; x < gridWidth; x++) {
                         const key = `${x},${y}`;
@@ -209,7 +203,7 @@ if (typeof Phaser === 'undefined') {
                 .setDepth(0);
             this.revealedSprites.push(sprite);
 
-            console.log(`Revealed ${type} at grid (${area.x}, ${area.y}) - Position: (${revealX + 100}, ${revealY + 100})`);
+            console.log(`Revealed ${type} at grid (${area.x}, ${area.y})`);
         }
 
         updateBars() {
