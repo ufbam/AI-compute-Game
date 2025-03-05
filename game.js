@@ -6,12 +6,10 @@ if (typeof Phaser === 'undefined') {
         constructor() {
             super('NarrativeScene');
         }
-
         init(data) {
             this.text = data.text;
             this.onClose = data.onClose;
         }
-
         create() {
             this.add.rectangle(400, 300, 600, 200, 0x333333).setOrigin(0.5);
             this.add.text(400, 260, this.text, {
@@ -34,12 +32,11 @@ if (typeof Phaser === 'undefined') {
         }
     }
 
-    // Boot scene to preload assets.
+    // Boot scene for preloading assets.
     class BootScene extends Phaser.Scene {
         constructor() {
             super('BootScene');
         }
-
         preload() {
             this.load.image('desert_backdrop', 'assets/desert_backdrop.png');
             this.load.image('desert_overlay', 'assets/desert_overlay.png');
@@ -48,7 +45,6 @@ if (typeof Phaser === 'undefined') {
             this.load.image('solar_panel_high', 'assets/solar_panel_high.png');
             this.load.image('cooling_system_high', 'assets/cooling_system_high.png');
         }
-
         create() {
             this.scene.start('MainScene');
         }
@@ -59,25 +55,17 @@ if (typeof Phaser === 'undefined') {
         constructor() {
             super('MainScene');
         }
-
         create() {
-            // Add the desert background.
-            this.add.image(400, 300, 'desert_backdrop').setOrigin(0.5).setDepth(0);
+            // Bottom layer: the desert overlay (final image to reveal).
+            this.add.image(400, 300, 'desert_overlay').setOrigin(0.5).setDepth(0);
 
-            // Add the overlay image.
-            this.overlay = this.add.image(400, 300, 'desert_overlay').setOrigin(0.5).setDepth(1);
+            // Top layer: use a Render Texture as the cover.
+            // Draw the desert backdrop (the cover image) onto the Render Texture.
+            this.coverRT = this.add.renderTexture(0, 0, 800, 600).setDepth(1);
+            this.coverRT.draw('desert_backdrop', 400, 300);
 
-            // Create a Graphics object for the mask (not added to the display list).
-            this.overlayMaskGraphics = this.make.graphics({ x: 0, y: 0, add: false });
-            // Draw a base mask that covers the full area with zero alpha.
-            this.overlayMaskGraphics.clear();
-            this.overlayMaskGraphics.fillStyle(0xffffff, 0);
-            this.overlayMaskGraphics.fillRect(0, 0, 800, 600);
-
-            // Create a GeometryMask from the graphics and force auto-update.
-            let mask = new Phaser.Display.Masks.GeometryMask(this, this.overlayMaskGraphics);
-            mask.autoUpdate = true;
-            this.overlay.setMask(mask);
+            // A Graphics object for erasing portions from the cover.
+            this.eraseGraphics = this.make.graphics({ x: 0, y: 0, add: false });
 
             // Initialize game resources.
             this.budget = 10000;
@@ -88,7 +76,7 @@ if (typeof Phaser === 'undefined') {
             this.heatLevel = 0;
             this.maxHeat = 100;
             this.maxElectricity = 100;
-            // For the visual bars, use higher maximums for slower increments.
+            // Use higher values for slower visual increments.
             this.barMaxHeat = 400;
             this.barMaxElectricity = 400;
             this.offices = 0;
@@ -180,13 +168,12 @@ if (typeof Phaser === 'undefined') {
             this.add.text(760, 580, 'Heat', { font: '16px Arial', fill: '#ffffff' })
                 .setOrigin(0.5).setDepth(10);
 
-            // --- Overlay Mask Grid Setup ---
-            // Divide the 800×600 overlay into 20 cells (5 columns × 4 rows).
+            // --- Cover Grid Setup ---
+            // Divide the cover into 20 cells (5 columns x 4 rows).
             this.gridWidth = 5;
             this.gridHeight = 4;
-            this.cellWidth = 800 / this.gridWidth;   // 160 pixels.
-            this.cellHeight = 600 / this.gridHeight;   // 150 pixels.
-            // Set to track revealed cells (keys are "col,row").
+            this.cellWidth = 800 / this.gridWidth;    // 160 pixels
+            this.cellHeight = 600 / this.gridHeight;    // 150 pixels
             this.revealedCells = new Set();
 
             // Update resources every second.
@@ -197,7 +184,6 @@ if (typeof Phaser === 'undefined') {
                 loop: true
             });
 
-            // Show starting narrative.
             this.showNarrative('Build an AI compute cluster in the desert. Start with an office.');
             this.scene.launch('HUDScene');
         }
@@ -238,13 +224,13 @@ if (typeof Phaser === 'undefined') {
             if (type === 'office') this.offices++;
             if (type === 'server_rack') this.servers++;
 
-            // Reveal one new cell from the overlay mask.
-            this.revealOverlayCell();
+            // Erase one cell in the cover to reveal the underlying overlay.
+            this.revealCoverCell();
             this.updateBars();
         }
 
-        revealOverlayCell() {
-            // Find all unrevealed cell positions.
+        revealCoverCell() {
+            // Gather all unrevealed cells.
             const availableCells = [];
             for (let col = 0; col < this.gridWidth; col++) {
                 for (let row = 0; row < this.gridHeight; row++) {
@@ -255,44 +241,34 @@ if (typeof Phaser === 'undefined') {
                 }
             }
             if (availableCells.length === 0) return;
-            // Pick a random unrevealed cell.
+            // Choose one random cell.
             const cell = Phaser.Utils.Array.GetRandom(availableCells);
             this.revealedCells.add(cell.key);
 
-            // Rebuild the mask:
-            // First, redraw the base mask covering the entire overlay with alpha 0.
-            this.overlayMaskGraphics.clear();
-            this.overlayMaskGraphics.fillStyle(0xffffff, 0);
-            this.overlayMaskGraphics.fillRect(0, 0, 800, 600);
-            // Then, draw all revealed cells with alpha 1.
-            this.overlayMaskGraphics.fillStyle(0xffffff, 1);
-            this.revealedCells.forEach(key => {
-                const [col, row] = key.split(',').map(Number);
-                this.overlayMaskGraphics.fillRect(
-                    col * this.cellWidth,
-                    row * this.cellHeight,
-                    this.cellWidth,
-                    this.cellHeight
-                );
-            });
+            // Prepare the erase graphics: a filled rectangle the size of one cell.
+            this.eraseGraphics.clear();
+            this.eraseGraphics.fillStyle(0xffffff, 1);
+            this.eraseGraphics.fillRect(0, 0, this.cellWidth, this.cellHeight);
+            // Erase that rectangle from the cover Render Texture at the cell’s top‐left coordinates.
+            this.coverRT.erase(this.eraseGraphics, cell.col * this.cellWidth, cell.row * this.cellHeight);
 
-            console.log(`Revealed overlay cell at column ${cell.col}, row ${cell.row}`);
+            console.log(`Revealed cell at col ${cell.col}, row ${cell.row}`);
         }
 
         updateBars() {
-            // Electricity usage bar.
+            // Update the electricity usage bar.
             const usageHeight = Math.min(this.electricityUsed / this.barMaxElectricity, 1) * 200;
             this.powerBarUsage.clear();
             this.powerBarUsage.fillStyle(usageHeight > 160 ? 0xff0000 : 0x00ff00, 1);
             this.powerBarUsage.fillRect(20, 400 - usageHeight, 16, usageHeight);
 
-            // Electricity generation bar.
+            // Update the electricity generation bar.
             const outputHeight = Math.min(this.electricityGenerated / this.barMaxElectricity, 1) * 200;
             this.powerBarOutput.clear();
             this.powerBarOutput.fillStyle(outputHeight > 160 ? 0xff0000 : 0x00ff00, 1);
             this.powerBarOutput.fillRect(40, 400 - outputHeight, 16, outputHeight);
 
-            // Heat bar.
+            // Update the heat bar.
             const heatHeight = Math.min(this.heatLevel / this.barMaxHeat, 1) * 200;
             this.heatBar.clear();
             this.heatBar.fillStyle(heatHeight > 160 ? 0xff0000 : 0xffa500, 1);
@@ -338,12 +314,11 @@ if (typeof Phaser === 'undefined') {
         }
     }
 
-    // HUD scene for resource display.
+    // HUD scene for displaying resource information.
     class HUDScene extends Phaser.Scene {
         constructor() {
             super('HUDScene');
         }
-
         create() {
             this.add.rectangle(400, 20, 800, 40, 0x333333).setOrigin(0.5).setDepth(9);
             this.budgetText = this.add.text(20, 15, 'Budget: $10000', { font: '22px Arial', fill: '#ffffff' }).setDepth(10);
@@ -351,7 +326,6 @@ if (typeof Phaser === 'undefined') {
             this.electricityText = this.add.text(400, 15, 'Electricity: 0 kW', { font: '22px Arial', fill: '#ffffff' }).setDepth(10);
             this.aiText = this.add.text(600, 15, 'AI: 0', { font: '22px Arial', fill: '#ffffff' }).setDepth(10);
         }
-
         update() {
             const main = this.scene.get('MainScene');
             this.budgetText.setText(`Budget: $${Math.floor(main.budget)}`);
