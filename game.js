@@ -59,20 +59,32 @@ if (typeof Phaser === 'undefined') {
         }
 
         create() {
+            // Add background image
             this.add.image(400, 300, 'desert_backdrop').setOrigin(0.5).setDepth(0);
-            this.overlay = this.add.image(400, 300, 'desert_overlay').setOrigin(0.5).setAlpha(0).setDepth(0);
 
+            // Add overlay image and apply a mask (initially with no revealed areas)
+            this.overlay = this.add.image(400, 300, 'desert_overlay').setOrigin(0.5).setDepth(1);
+            this.overlayMaskGraphics = this.make.graphics({ x: 0, y: 0, add: false });
+            this.overlay.setMask(new Phaser.Display.Masks.GeometryMask(this, this.overlayMaskGraphics));
+
+            // Initialize game resources and thresholds
             this.budget = 10000;
             this.electricityGenerated = 0;
             this.electricityUsed = 0;
             this.computingPower = 0;
             this.aiAbility = 0;
             this.heatLevel = 0;
-            this.maxHeat = 100; // Increased for smaller increments
-            this.maxElectricity = 100; // Increased for smaller increments
+            this.maxHeat = 100;         // Gameplay threshold for heat
+            this.maxElectricity = 100;  // Gameplay threshold for electricity
+
+            // These bar maximums are higher, so the visual bars update in smaller increments.
+            this.barMaxHeat = 400;
+            this.barMaxElectricity = 400;
+
             this.offices = 0;
             this.servers = 0;
 
+            // Define buildings and their properties
             this.buildings = {
                 office: { cost: 2000, electricity: -10, computing: 0, shopSprite: 'office_high', tooltip: 'Required first. Allows 3 servers per office.' },
                 server_rack: { cost: 1000, electricity: -5, computing: 10, heat: 10, shopSprite: 'server_rack_high', tooltip: 'Boosts computing power, uses power and generates heat.' },
@@ -80,6 +92,7 @@ if (typeof Phaser === 'undefined') {
                 cooling_system: { cost: 1500, electricity: -5, heat: -15, shopSprite: 'cooling_system_high', tooltip: 'Reduces heat from servers.' }
             };
 
+            // Create shop UI background and items
             const shopY = 530;
             this.add.rectangle(400, shopY + 50, 800, 140, 0x333333).setOrigin(0.5).setDepth(10);
             const shopItems = [
@@ -97,24 +110,41 @@ if (typeof Phaser === 'undefined') {
                     .on('pointerover', () => this.showTooltip(item.x, shopY - 80, data.tooltip))
                     .on('pointerout', () => this.hideTooltip())
                     .setDepth(10);
-                this.add.text(item.x, shopY + 40, item.type.replace('_', ' '), { font: '14px Arial', fill: '#ffffff' }).setOrigin(0.5).setDepth(10);
-                this.add.text(item.x, shopY + 60, `$${data.cost}`, { font: '12px Arial', fill: '#ffff00' }).setOrigin(0.5).setDepth(10);
+                this.add.text(item.x, shopY + 40, item.type.replace('_', ' '), { font: '14px Arial', fill: '#ffffff' })
+                    .setOrigin(0.5).setDepth(10);
+                this.add.text(item.x, shopY + 60, `$${data.cost}`, { font: '12px Arial', fill: '#ffff00' })
+                    .setOrigin(0.5).setDepth(10);
             });
 
+            // Create resource bars for electricity usage/output and heat
             this.powerBarUsage = this.add.graphics().setDepth(10);
-            this.powerBarOutlineUsage = this.add.rectangle(20, 400, 20, 200, 0xffffff, 0).setOrigin(0, 1).setStrokeStyle(2, 0xffffff).setDepth(10);
-            this.add.text(30, 570, 'Usage', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5).setDepth(10);
+            this.powerBarOutlineUsage = this.add.rectangle(20, 400, 20, 200, 0xffffff, 0)
+                .setOrigin(0, 1)
+                .setStrokeStyle(2, 0xffffff)
+                .setDepth(10);
+            this.add.text(30, 570, 'Usage', { font: '16px Arial', fill: '#ffffff' })
+                .setOrigin(0.5).setDepth(10);
+
             this.powerBarOutput = this.add.graphics().setDepth(10);
-            this.powerBarOutlineOutput = this.add.rectangle(40, 400, 20, 200, 0xffffff, 0).setOrigin(0, 1).setStrokeStyle(2, 0xffffff).setDepth(10);
-            this.add.text(30, 590, 'Output', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5).setDepth(10);
+            this.powerBarOutlineOutput = this.add.rectangle(40, 400, 20, 200, 0xffffff, 0)
+                .setOrigin(0, 1)
+                .setStrokeStyle(2, 0xffffff)
+                .setDepth(10);
+            this.add.text(30, 590, 'Output', { font: '16px Arial', fill: '#ffffff' })
+                .setOrigin(0.5).setDepth(10);
 
             this.heatBar = this.add.graphics().setDepth(10);
-            this.heatBarOutline = this.add.rectangle(760, 400, 20, 200, 0xffffff, 0).setOrigin(0, 1).setStrokeStyle(2, 0xffffff).setDepth(10);
-            this.add.text(760, 580, 'Heat', { font: '16px Arial', fill: '#ffffff' }).setOrigin(0.5).setDepth(10);
+            this.heatBarOutline = this.add.rectangle(760, 400, 20, 200, 0xffffff, 0)
+                .setOrigin(0, 1)
+                .setStrokeStyle(2, 0xffffff)
+                .setDepth(10);
+            this.add.text(760, 580, 'Heat', { font: '16px Arial', fill: '#ffffff' })
+                .setOrigin(0.5).setDepth(10);
 
+            // This set will track which grid cells have been revealed (each cell is a 200x200 square)
             this.revealedAreas = new Set();
-            this.revealedSprites = [];
 
+            // Update game resources every second
             this.time.addEvent({
                 delay: 1000,
                 callback: this.updateResources,
@@ -159,6 +189,7 @@ if (typeof Phaser === 'undefined') {
             if (type === 'office') this.offices++;
             if (type === 'server_rack') this.servers++;
 
+            // Update the overlay mask based on building type
             this.revealOverlay(type);
             this.updateBars();
         }
@@ -169,8 +200,8 @@ if (typeof Phaser === 'undefined') {
             const gridHeight = 3;
             let availableAreas = [];
 
+            // For solar panels, reveal from the top row; for other items, reveal from the middle and bottom rows.
             if (type === 'solar_panel') {
-                // Upper half: top row (y=0)
                 for (let x = 0; x < gridWidth; x++) {
                     const key = `${x},0`;
                     if (!this.revealedAreas.has(key)) {
@@ -178,7 +209,6 @@ if (typeof Phaser === 'undefined') {
                     }
                 }
             } else {
-                // Lower half: middle and bottom rows (y=1, y=2)
                 for (let y = 1; y < gridHeight; y++) {
                     for (let x = 0; x < gridWidth; x++) {
                         const key = `${x},${y}`;
@@ -192,32 +222,34 @@ if (typeof Phaser === 'undefined') {
             if (availableAreas.length === 0) return;
 
             const area = Phaser.Utils.Array.GetRandom(availableAreas);
-            const revealX = area.x * gridSize;
-            const revealY = area.y * gridSize;
             const key = `${area.x},${area.y}`;
             this.revealedAreas.add(key);
 
-            const sprite = this.add.sprite(revealX + 100, revealY + 100, 'desert_overlay')
-                .setOrigin(0.5)
-                .setCrop(revealX, revealY, gridSize, gridSize)
-                .setDepth(0);
-            this.revealedSprites.push(sprite);
+            // Clear and redraw the mask graphics with all revealed grid cells
+            this.overlayMaskGraphics.clear();
+            this.overlayMaskGraphics.fillStyle(0xffffff);
+            this.revealedAreas.forEach(key => {
+                const parts = key.split(',');
+                const cellX = parseInt(parts[0]);
+                const cellY = parseInt(parts[1]);
+                this.overlayMaskGraphics.fillRect(cellX * gridSize, cellY * gridSize, gridSize, gridSize);
+            });
 
             console.log(`Revealed ${type} at grid (${area.x}, ${area.y})`);
         }
 
         updateBars() {
-            const usageHeight = Math.min(this.electricityUsed / this.maxElectricity, 1) * 200;
+            const usageHeight = Math.min(this.electricityUsed / this.barMaxElectricity, 1) * 200;
             this.powerBarUsage.clear();
             this.powerBarUsage.fillStyle(usageHeight > 160 ? 0xff0000 : 0x00ff00, 1);
             this.powerBarUsage.fillRect(20, 400 - usageHeight, 16, usageHeight);
 
-            const outputHeight = Math.min(this.electricityGenerated / this.maxElectricity, 1) * 200;
+            const outputHeight = Math.min(this.electricityGenerated / this.barMaxElectricity, 1) * 200;
             this.powerBarOutput.clear();
             this.powerBarOutput.fillStyle(outputHeight > 160 ? 0xff0000 : 0x00ff00, 1);
             this.powerBarOutput.fillRect(40, 400 - outputHeight, 16, outputHeight);
 
-            const heatHeight = Math.min(this.heatLevel / this.maxHeat, 1) * 200;
+            const heatHeight = Math.min(this.heatLevel / this.barMaxHeat, 1) * 200;
             this.heatBar.clear();
             this.heatBar.fillStyle(heatHeight > 160 ? 0xff0000 : 0xffa500, 1);
             this.heatBar.fillRect(760, 400 - heatHeight, 16, heatHeight);
