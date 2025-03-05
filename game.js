@@ -424,4 +424,26 @@ if (typeof Phaser === 'undefined') {
             this.budgetText = this.add.text(20, 15, 'Budget: $10000', { font: '22px Arial', fill: '#ffffff', fontStyle: 'bold' });
             this.gflopsText = this.add.text(220, 15, 'G-Flops: 0', { font: '22px Arial', fill: '#ffffff', fontStyle: 'bold' });
             this.electricityText = this.add.text(400, 15, 'Electricity: 0 kW', { font: '22px Arial', fill: '#ffffff', fontStyle: 'bold' });
-            this.aiText = this.add.text(600, 15
+            this.aiText = this.add.text(600, 15, 'AI: 0', { font: '22px Arial', fill: '#ffffff', fontStyle: 'bold' });
+        }
+
+        update() {
+            const mainScene = this.scene.get('MainScene');
+            this.budgetText.setText(`Budget: $${Math.floor(mainScene.budget)}`);
+            this.gflopsText.setText(`G-Flops: ${Math.floor(mainScene.computingPower)}`);
+            this.electricityText.setText(`Electricity: ${mainScene.electricityGenerated - mainScene.electricityUsed} kW`);
+            this.aiText.setText(`AI: ${mainScene.aiAbility.toFixed(2)}`);
+        }
+    }
+
+    const config = {
+        type: Phaser.AUTO,
+        width: 800,
+        height: 600,
+        scene: [BootScene, MainScene, HUDScene, NarrativeScene],
+        pixelArt: true,
+        backgroundColor: '#000000'
+    };
+
+    const game = new Phaser.Game(config);
+}
