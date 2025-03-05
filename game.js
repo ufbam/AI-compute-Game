@@ -59,7 +59,7 @@ if (typeof Phaser === 'undefined') {
         }
 
         create() {
-            // Add backdrop and overlay, both centered at (400, 300)
+            // Center backdrop and overlay
             this.add.image(400, 300, 'desert_backdrop').setOrigin(0.5).setDepth(0);
             this.overlay = this.add.image(400, 300, 'desert_overlay').setOrigin(0.5).setAlpha(0).setDepth(0);
 
@@ -105,10 +105,6 @@ if (typeof Phaser === 'undefined') {
                 this.add.text(item.x, shopY + 60, `$${data.cost}`, { font: '12px Arial', fill: '#ffff00' }).setOrigin(0.5).setDepth(10);
             });
 
-            // Status HUD
-            const hudY = 0;
-            this.add.rectangle(400, hudY + 20, 800, 40, 0x333333).setOrigin(0.5).setDepth(10);
-
             // Power and Heat bars
             this.powerBarUsage = this.add.graphics().setDepth(10);
             this.powerBarOutlineUsage = this.add.rectangle(20, 400, 20, 200, 0xffffff, 0).setOrigin(0, 1).setStrokeStyle(2, 0xffffff).setDepth(10);
@@ -133,8 +129,9 @@ if (typeof Phaser === 'undefined') {
                 loop: true
             });
 
-            // Start narrative
+            // Start narrative and HUD
             this.showNarrative('Build an AI compute cluster in the desert. Start with an office.');
+            this.scene.launch('HUDScene');
         }
 
         buyBuilding(type) {
@@ -175,13 +172,12 @@ if (typeof Phaser === 'undefined') {
         }
 
         revealOverlay(type) {
-            const gridSize = 200; // 200x200 pixels
-            const gridWidth = 4; // 800 / 200
-            const gridHeight = 3; // 600 / 200
+            const gridSize = 200;
+            const gridWidth = 4;
+            const gridHeight = 3;
             let availableAreas = [];
 
             if (type === 'solar_panel') {
-                // Top row (y=0)
                 for (let x = 0; x < gridWidth; x++) {
                     const key = `${x},0`;
                     if (!this.revealedAreas.has(key)) {
@@ -189,7 +185,6 @@ if (typeof Phaser === 'undefined') {
                     }
                 }
             } else {
-                // Middle and bottom rows (y=1, y=2)
                 for (let y = 1; y < gridHeight; y++) {
                     for (let x = 0; x < gridWidth; x++) {
                         const key = `${x},${y}`;
@@ -208,30 +203,26 @@ if (typeof Phaser === 'undefined') {
             const key = `${area.x},${area.y}`;
             this.revealedAreas.add(key);
 
-            // Add sprite cropped to 200x200 at the grid position
             const sprite = this.add.sprite(revealX + 100, revealY + 100, 'desert_overlay')
                 .setOrigin(0.5)
                 .setCrop(revealX, revealY, gridSize, gridSize)
                 .setDepth(0);
             this.revealedSprites.push(sprite);
 
-            console.log(`Revealed ${type} at (${revealX}, ${revealY}) - Total revealed: ${this.revealedAreas.size}`);
+            console.log(`Revealed ${type} at grid (${area.x}, ${area.y}) - Position: (${revealX + 100}, ${revealY + 100})`);
         }
 
         updateBars() {
-            // Power Usage
             const usageHeight = Math.min(this.electricityUsed / this.maxElectricity, 1) * 200;
             this.powerBarUsage.clear();
             this.powerBarUsage.fillStyle(usageHeight > 160 ? 0xff0000 : 0x00ff00, 1);
             this.powerBarUsage.fillRect(20, 400 - usageHeight, 16, usageHeight);
 
-            // Power Output
             const outputHeight = Math.min(this.electricityGenerated / this.maxElectricity, 1) * 200;
             this.powerBarOutput.clear();
             this.powerBarOutput.fillStyle(outputHeight > 160 ? 0xff0000 : 0x00ff00, 1);
             this.powerBarOutput.fillRect(40, 400 - outputHeight, 16, outputHeight);
 
-            // Heat
             const heatHeight = Math.min(this.heatLevel / this.maxHeat, 1) * 200;
             this.heatBar.clear();
             this.heatBar.fillStyle(heatHeight > 160 ? 0xff0000 : 0xffa500, 1);
@@ -277,13 +268,13 @@ if (typeof Phaser === 'undefined') {
         }
     }
 
-    // HUD Scene for top bar
     class HUDScene extends Phaser.Scene {
         constructor() {
             super('HUDScene');
         }
 
         create() {
+            this.add.rectangle(400, 20, 800, 40, 0x333333).setOrigin(0.5).setDepth(9);
             this.budgetText = this.add.text(20, 15, 'Budget: $10000', { font: '22px Arial', fill: '#ffffff' }).setDepth(10);
             this.gflopsText = this.add.text(220, 15, 'G-Flops: 0', { font: '22px Arial', fill: '#ffffff' }).setDepth(10);
             this.electricityText = this.add.text(400, 15, 'Electricity: 0 kW', { font: '22px Arial', fill: '#ffffff' }).setDepth(10);
@@ -299,7 +290,6 @@ if (typeof Phaser === 'undefined') {
         }
     }
 
-    // Game configuration
     const config = {
         type: Phaser.AUTO,
         width: 800,
