@@ -1,6 +1,7 @@
 if (typeof Phaser === 'undefined') {
     console.error('Phaser is not loaded. Check the script tag in index.html.');
 } else {
+    // Scene for narrative popups
     class NarrativeScene extends Phaser.Scene {
         constructor() {
             super('NarrativeScene');
@@ -34,6 +35,7 @@ if (typeof Phaser === 'undefined') {
         }
     }
 
+    // Boot scene for preloading assets
     class BootScene extends Phaser.Scene {
         constructor() {
             super('BootScene');
@@ -53,46 +55,76 @@ if (typeof Phaser === 'undefined') {
         }
     }
 
+    // Main gameplay scene
     class MainScene extends Phaser.Scene {
         constructor() {
             super('MainScene');
         }
 
         create() {
-            // Add background image
+            // Add the background image
             this.add.image(400, 300, 'desert_backdrop').setOrigin(0.5).setDepth(0);
 
-            // Add overlay image and apply a mask (initially with no revealed areas)
+            // Add the overlay image
+            // (It will be fully hidden at the start via a mask.)
             this.overlay = this.add.image(400, 300, 'desert_overlay').setOrigin(0.5).setDepth(1);
+
+            // Create a graphics object to act as the mask.
+            // At the start, we won’t draw any cells so nothing from the overlay is shown.
             this.overlayMaskGraphics = this.make.graphics({ x: 0, y: 0, add: false });
             this.overlay.setMask(new Phaser.Display.Masks.GeometryMask(this, this.overlayMaskGraphics));
 
-            // Initialize game resources and thresholds
+            // Game resources and limits
             this.budget = 10000;
             this.electricityGenerated = 0;
             this.electricityUsed = 0;
             this.computingPower = 0;
             this.aiAbility = 0;
             this.heatLevel = 0;
-            this.maxHeat = 100;         // Gameplay threshold for heat
-            this.maxElectricity = 100;  // Gameplay threshold for electricity
+            this.maxHeat = 100;         // gameplay threshold for heat
+            this.maxElectricity = 100;  // gameplay threshold for electricity
 
-            // These bar maximums are higher, so the visual bars update in smaller increments.
+            // For visual bars, we use higher max values so they fill in smaller increments.
             this.barMaxHeat = 400;
             this.barMaxElectricity = 400;
 
             this.offices = 0;
             this.servers = 0;
 
-            // Define buildings and their properties
+            // Building definitions
             this.buildings = {
-                office: { cost: 2000, electricity: -10, computing: 0, shopSprite: 'office_high', tooltip: 'Required first. Allows 3 servers per office.' },
-                server_rack: { cost: 1000, electricity: -5, computing: 10, heat: 10, shopSprite: 'server_rack_high', tooltip: 'Boosts computing power, uses power and generates heat.' },
-                solar_panel: { cost: 500, electricity: 10, computing: 0, shopSprite: 'solar_panel_high', tooltip: 'Generates electricity to power servers.' },
-                cooling_system: { cost: 1500, electricity: -5, heat: -15, shopSprite: 'cooling_system_high', tooltip: 'Reduces heat from servers.' }
+                office: {
+                    cost: 2000,
+                    electricity: -10,
+                    computing: 0,
+                    shopSprite: 'office_high',
+                    tooltip: 'Required first. Allows 3 servers per office.'
+                },
+                server_rack: {
+                    cost: 1000,
+                    electricity: -5,
+                    computing: 10,
+                    heat: 10,
+                    shopSprite: 'server_rack_high',
+                    tooltip: 'Boosts computing power, uses power and generates heat.'
+                },
+                solar_panel: {
+                    cost: 500,
+                    electricity: 10,
+                    computing: 0,
+                    shopSprite: 'solar_panel_high',
+                    tooltip: 'Generates electricity to power servers.'
+                },
+                cooling_system: {
+                    cost: 1500,
+                    electricity: -5,
+                    heat: -15,
+                    shopSprite: 'cooling_system_high',
+                    tooltip: 'Reduces heat from servers.'
+                }
             };
 
-            // Create shop UI background and items
+            // Create the shop UI
             const shopY = 530;
             this.add.rectangle(400, shopY + 50, 800, 140, 0x333333).setOrigin(0.5).setDepth(10);
             const shopItems = [
@@ -110,13 +142,17 @@ if (typeof Phaser === 'undefined') {
                     .on('pointerover', () => this.showTooltip(item.x, shopY - 80, data.tooltip))
                     .on('pointerout', () => this.hideTooltip())
                     .setDepth(10);
-                this.add.text(item.x, shopY + 40, item.type.replace('_', ' '), { font: '14px Arial', fill: '#ffffff' })
-                    .setOrigin(0.5).setDepth(10);
-                this.add.text(item.x, shopY + 60, `$${data.cost}`, { font: '12px Arial', fill: '#ffff00' })
-                    .setOrigin(0.5).setDepth(10);
+                this.add.text(item.x, shopY + 40, item.type.replace('_', ' '), {
+                    font: '14px Arial',
+                    fill: '#ffffff'
+                }).setOrigin(0.5).setDepth(10);
+                this.add.text(item.x, shopY + 60, `$${data.cost}`, {
+                    font: '12px Arial',
+                    fill: '#ffff00'
+                }).setOrigin(0.5).setDepth(10);
             });
 
-            // Create resource bars for electricity usage/output and heat
+            // Create resource bars
             this.powerBarUsage = this.add.graphics().setDepth(10);
             this.powerBarOutlineUsage = this.add.rectangle(20, 400, 20, 200, 0xffffff, 0)
                 .setOrigin(0, 1)
@@ -141,10 +177,19 @@ if (typeof Phaser === 'undefined') {
             this.add.text(760, 580, 'Heat', { font: '16px Arial', fill: '#ffffff' })
                 .setOrigin(0.5).setDepth(10);
 
-            // This set will track which grid cells have been revealed (each cell is a 200x200 square)
-            this.revealedAreas = new Set();
+            // --- Overlay Mask Setup ---
+            // We divide the overlay image into 20 cells (a 5 x 4 grid).
+            // Since the overlay is 800×600, each cell will be 800/5 = 160px wide and 600/4 = 150px tall.
+            this.gridWidth = 5;
+            this.gridHeight = 4;
+            this.cellWidth = 800 / this.gridWidth;   // 160
+            this.cellHeight = 600 / this.gridHeight;   // 150
 
-            // Update game resources every second
+            // Keep track of which grid cells have been revealed.
+            // We store keys in the format "col,row" (e.g., "2,1").
+            this.revealedCells = new Set();
+
+            // Update game resources every second.
             this.time.addEvent({
                 delay: 1000,
                 callback: this.updateResources,
@@ -152,6 +197,7 @@ if (typeof Phaser === 'undefined') {
                 loop: true
             });
 
+            // Start with a narrative prompt.
             this.showNarrative('Build an AI compute cluster in the desert. Start with an office.');
             this.scene.launch('HUDScene');
         }
@@ -189,66 +235,60 @@ if (typeof Phaser === 'undefined') {
             if (type === 'office') this.offices++;
             if (type === 'server_rack') this.servers++;
 
-            // Update the overlay mask based on building type
-            this.revealOverlay(type);
+            // Reveal one new cell from the overlay mask.
+            this.revealOverlayCell();
             this.updateBars();
         }
 
-        revealOverlay(type) {
-            const gridSize = 200;
-            const gridWidth = 4;
-            const gridHeight = 3;
-            let availableAreas = [];
-
-            // For solar panels, reveal from the top row; for other items, reveal from the middle and bottom rows.
-            if (type === 'solar_panel') {
-                for (let x = 0; x < gridWidth; x++) {
-                    const key = `${x},0`;
-                    if (!this.revealedAreas.has(key)) {
-                        availableAreas.push({ x, y: 0 });
-                    }
-                }
-            } else {
-                for (let y = 1; y < gridHeight; y++) {
-                    for (let x = 0; x < gridWidth; x++) {
-                        const key = `${x},${y}`;
-                        if (!this.revealedAreas.has(key)) {
-                            availableAreas.push({ x, y });
-                        }
+        revealOverlayCell() {
+            // Build an array of all unrevealed cell positions.
+            const availableCells = [];
+            for (let col = 0; col < this.gridWidth; col++) {
+                for (let row = 0; row < this.gridHeight; row++) {
+                    const key = `${col},${row}`;
+                    if (!this.revealedCells.has(key)) {
+                        availableCells.push({ col, row, key });
                     }
                 }
             }
 
-            if (availableAreas.length === 0) return;
+            // If all cells are already revealed, do nothing.
+            if (availableCells.length === 0) return;
 
-            const area = Phaser.Utils.Array.GetRandom(availableAreas);
-            const key = `${area.x},${area.y}`;
-            this.revealedAreas.add(key);
+            // Pick a random unrevealed cell.
+            const cell = Phaser.Utils.Array.GetRandom(availableCells);
+            this.revealedCells.add(cell.key);
 
-            // Clear and redraw the mask graphics with all revealed grid cells
+            // Clear the mask graphics and redraw all revealed cells.
             this.overlayMaskGraphics.clear();
             this.overlayMaskGraphics.fillStyle(0xffffff);
-            this.revealedAreas.forEach(key => {
-                const parts = key.split(',');
-                const cellX = parseInt(parts[0]);
-                const cellY = parseInt(parts[1]);
-                this.overlayMaskGraphics.fillRect(cellX * gridSize, cellY * gridSize, gridSize, gridSize);
+            this.revealedCells.forEach(key => {
+                const [col, row] = key.split(',').map(Number);
+                this.overlayMaskGraphics.fillRect(
+                    col * this.cellWidth,
+                    row * this.cellHeight,
+                    this.cellWidth,
+                    this.cellHeight
+                );
             });
 
-            console.log(`Revealed ${type} at grid (${area.x}, ${area.y})`);
+            console.log(`Revealed overlay cell at column ${cell.col}, row ${cell.row}`);
         }
 
         updateBars() {
+            // Update electricity usage bar.
             const usageHeight = Math.min(this.electricityUsed / this.barMaxElectricity, 1) * 200;
             this.powerBarUsage.clear();
             this.powerBarUsage.fillStyle(usageHeight > 160 ? 0xff0000 : 0x00ff00, 1);
             this.powerBarUsage.fillRect(20, 400 - usageHeight, 16, usageHeight);
 
+            // Update electricity generation bar.
             const outputHeight = Math.min(this.electricityGenerated / this.barMaxElectricity, 1) * 200;
             this.powerBarOutput.clear();
             this.powerBarOutput.fillStyle(outputHeight > 160 ? 0xff0000 : 0x00ff00, 1);
             this.powerBarOutput.fillRect(40, 400 - outputHeight, 16, outputHeight);
 
+            // Update heat bar.
             const heatHeight = Math.min(this.heatLevel / this.barMaxHeat, 1) * 200;
             this.heatBar.clear();
             this.heatBar.fillStyle(heatHeight > 160 ? 0xff0000 : 0xffa500, 1);
@@ -294,6 +334,7 @@ if (typeof Phaser === 'undefined') {
         }
     }
 
+    // Heads-up display (HUD) scene
     class HUDScene extends Phaser.Scene {
         constructor() {
             super('HUDScene');
@@ -316,6 +357,7 @@ if (typeof Phaser === 'undefined') {
         }
     }
 
+    // Game configuration
     const config = {
         type: Phaser.AUTO,
         width: 800,
