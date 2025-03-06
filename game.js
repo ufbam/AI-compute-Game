@@ -11,14 +11,15 @@ if (typeof Phaser === 'undefined') {
             this.onClose = data.onClose;
         }
         create() {
-            this.add.rectangle(400, 300, 600, 200, 0x333333).setOrigin(0.5);
+            // Reduced height from 200 to 150.
+            this.add.rectangle(400, 300, 600, 150, 0x333333).setOrigin(0.5);
             this.add.text(400, 260, this.text, {
                 font: '16px Arial',
                 fill: '#ffffff',
                 wordWrap: { width: 560 }
             }).setOrigin(0.5);
-            // OK button moved up to y = 460.
-            this.add.text(400, 460, 'OK', {
+            // OK button moved higher (y = 440).
+            this.add.text(400, 440, 'OK', {
                 font: '20px Arial',
                 fill: '#00ff00',
                 backgroundColor: '#000000',
@@ -42,7 +43,7 @@ if (typeof Phaser === 'undefined') {
             // Background & shop icons.
             this.load.image('desert_backdrop', 'assets/desert_backdrop.png');
             this.load.image('office_high', 'assets/office_high.png');
-            this.load.image('server_rack_high', 'assets/server_rack_high.png'); // used for shop icon (server farm)
+            this.load.image('server_rack_high', 'assets/server_rack_high.png'); // shop icon for server farm
             this.load.image('solar_panel_high', 'assets/solar_panel_high.png');
             this.load.image('cooling_system_high', 'assets/cooling_system_high.png');
 
@@ -101,8 +102,7 @@ if (typeof Phaser === 'undefined') {
 
             // Training run flags.
             this.trainingRunActive = false;
-            this.trainingExtraLoad = 0; // Extra load during training run.
-            // Track the last AI milestone triggered.
+            this.trainingExtraLoad = 0; // Extra load during training.
             this.lastAIMilestone = 0;
 
             // Building definitions.
@@ -138,7 +138,7 @@ if (typeof Phaser === 'undefined') {
                 }
             };
 
-            // Initialize purchase counts and display texts.
+            // Initialize purchase counts and displays.
             this.buildingCounts = {
                 office: 0,
                 server_farm: 0,
@@ -149,7 +149,6 @@ if (typeof Phaser === 'undefined') {
 
             // --- Create the Shop UI ---
             const shopY = 530;
-            // Shop background.
             this.add.rectangle(400, shopY + 50, 800, 140, 0x333333).setOrigin(0.5).setDepth(10);
             const shopItems = [
                 { type: 'office', x: 150 },
@@ -220,8 +219,8 @@ if (typeof Phaser === 'undefined') {
             this.solarPanels = [];
             this.coolingImages = [];
 
-            // Helper method to update layers gradually for server_farm, solar_panel, and cooling_system.
-            // (Offices appear instantly.)
+            // Helper method to update layers gradually (for server_farm, solar_panel, cooling_system).
+            // Offices appear instantly.
             this.updateLayer = (buildingType, assetPrefix, maxLayers, layerArray) => {
                 const count = this.buildingCounts[buildingType];
                 const layerIndex = Math.floor((count - 1) / 3);
@@ -244,7 +243,8 @@ if (typeof Phaser === 'undefined') {
             };
 
             // Create the "Initiate Training Run" button, initially hidden.
-            this.trainingButton = this.add.text(700, 60, 'Initiate Training Run', {
+            // Moved down to y = 120 to make room for the AI box.
+            this.trainingButton = this.add.text(700, 120, 'Initiate Training Run', {
                 font: '16px Arial',
                 fill: '#00ff00',
                 backgroundColor: '#000000',
@@ -255,16 +255,14 @@ if (typeof Phaser === 'undefined') {
                 this.initiateTrainingRun();
             });
 
-            // Show the opening narrative (more instructional and witty).
-            this.showNarrative("Welcome to your AI venture! Build offices, server farms, solar panels, and cooling systems to increase your GFlops and boost your AI level. The higher your GFlops, the faster your AI learns. Use training runs to accelerate progress when surplus power allows. Now, get to work!");
+            // Show the opening narrative (instructional and witty).
+            this.showNarrative("Welcome to your AI venture! Build offices, server farms, solar panels, and cooling systems to boost your GFlops and increase your AI level. Remember, more GFlops mean faster learning. Use training runs to supercharge your progress when you have surplus power. Good luck!");
 
-            // Initialize last AI milestone.
             this.lastAIMilestone = 0;
-
             this.scene.launch('HUDScene');
         }
 
-        // Helper method to generate random gibberish.
+        // Generate random gibberish for AI milestones 60-100.
         getRandomGibberish() {
             const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()";
             let result = "";
@@ -275,21 +273,20 @@ if (typeof Phaser === 'undefined') {
             return result;
         }
 
-        // Returns a narrative message based on the AI milestone.
+        // Return narrative based on AI milestone.
         getAINarrative(milestone) {
             if (milestone === 10) {
-                return "At level 10, your first chatbot debuts with a cheeky knack for conversation.";
+                return "Level 10: Your first chatbot debuts with a sharp wit.";
             } else if (milestone === 20) {
-                return "At level 20, government offices begin outsourcing their paperwork to your AI.";
+                return "Level 20: Government offices now outsource paperwork to your AI.";
             } else if (milestone === 30) {
-                return "At level 30, your AI starts producing catchy slogans that get everyone talking.";
+                return "Level 30: Catchy slogans and brilliant quips begin to emerge.";
             } else if (milestone === 40) {
-                return "At level 40, humanoid robots showcase your AI's clever insights on every corner.";
+                return "Level 40: Humanoid robots now sport your AI's clever insights.";
             } else if (milestone === 50) {
-                return "At level 50, whispers spread that your AI might soon rival human wit.";
+                return "Level 50: Rumors say your AI is nearing true intelligence.";
             } else if (milestone >= 60 && milestone <= 100) {
-                // For milestones 60,70,80,90,100, generate random gibberish.
-                return "At level " + milestone + ", your AI declares: " + this.getRandomGibberish();
+                return "Level " + milestone + ": " + this.getRandomGibberish();
             } else if (milestone > 100) {
                 return "Your AI is too lazy to write anything new.";
             } else {
@@ -297,7 +294,7 @@ if (typeof Phaser === 'undefined') {
             }
         }
 
-        // Method to initiate a training run.
+        // Initiate a training run.
         initiateTrainingRun() {
             if (this.trainingRunActive) {
                 this.showPopup("Training run already in progress!");
@@ -322,7 +319,6 @@ if (typeof Phaser === 'undefined') {
             if (this.trainingRunActive) {
                 this.aiAbility = Math.min(this.aiAbility + (this.computingPower * 0.01), 1000);
             }
-            // Check if a new AI milestone is reached.
             let milestone = Math.floor(this.aiAbility / 10) * 10;
             if (milestone > this.lastAIMilestone) {
                 this.lastAIMilestone = milestone;
@@ -395,10 +391,10 @@ if (typeof Phaser === 'undefined') {
                 this.updateLayer('cooling_system', 'cooling', 3, this.coolingImages);
             }
 
-            // When the first server farm is built, reveal the training run button.
+            // Reveal the training run button when the first server farm is built.
             if (type === 'server_farm' && this.buildingCounts.server_farm === 1) {
                 this.trainingButton.visible = true;
-                this.showNarrative("Great job on building your first server! If you have surplus power, you can now 'Initiate Training Run' to boost your AI and income.");
+                this.showNarrative("Great job on building your first server! Now, if you have some surplus power, 'Initiate Training Run' to boost your AI and income.");
             }
 
             this.updateBars();
@@ -463,16 +459,18 @@ if (typeof Phaser === 'undefined') {
         create() {
             this.add.rectangle(400, 20, 800, 40, 0x333333).setOrigin(0.5).setDepth(9);
             this.budgetText = this.add.text(20, 15, 'Budget: $10000', { font: '22px Arial', fill: '#ffffff' }).setDepth(10);
-            this.gflopsText = this.add.text(220, 15, 'G-Flops: 0', { font: '22px Arial', fill: '#ffffff' }).setDepth(10);
+            this.gflopsText = this.add.text(220, 15, 'G-Flops: ' + Math.floor(0), { font: '22px Arial', fill: '#ffffff' }).setDepth(10);
             this.electricityText = this.add.text(400, 15, 'Electricity: 0 kW', { font: '22px Arial', fill: '#ffffff' }).setDepth(10);
-            this.aiText = this.add.text(600, 15, 'AI: 0', { font: '22px Arial', fill: '#ffffff' }).setDepth(10);
+            // Create a new AI metric box in its own container.
+            this.aiBox = this.add.rectangle(400, 70, 220, 60, 0x000000).setStrokeStyle(2, 0x00ff00).setDepth(10);
+            this.aiMetricText = this.add.text(400, 70, 'AI: 0', { font: 'bold 36px Arial', fill: '#00ff00' }).setOrigin(0.5).setDepth(11);
         }
         update() {
             const main = this.scene.get('MainScene');
             this.budgetText.setText(`Budget: $${Math.floor(main.budget)}`);
             this.gflopsText.setText(`G-Flops: ${Math.floor(main.computingPower)}`);
             this.electricityText.setText(`Electricity: ${main.electricityGenerated - main.electricityUsed} kW`);
-            this.aiText.setText(`AI: ${main.aiAbility.toFixed(2)}`);
+            this.aiMetricText.setText(`AI: ${main.aiAbility.toFixed(2)}`);
         }
     }
 
