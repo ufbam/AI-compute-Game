@@ -488,4 +488,3 @@ if (typeof Phaser === 'undefined') {
 
     const game = new Phaser.Game(config);
 }
-
