@@ -104,7 +104,7 @@ if (typeof Phaser === 'undefined') {
             this.trainingExtraLoad = 0; // extra load during training run
 
             // Building definitions.
-            // Note: "server_rack" is renamed to "server_farm".
+            // "server_rack" is now renamed to "server_farm".
             this.buildings = {
                 office: {
                     cost: 2000,
@@ -224,32 +224,23 @@ if (typeof Phaser === 'undefined') {
             this.solarPanels = [];
             this.coolingImages = [];
 
-            // Helper method to update/reveal a layer gradually.
-            // For a given building type (except office), each layer goes through 3 stages:
+            // Helper method to update/reveal a layer gradually for types other than office.
+            // For server_farm, solar_panel, and cooling_system, each layer goes through 3 stages:
             // stage 0: alpha = 1/3, stage 1: alpha = 2/3, stage 2: alpha = 1.
-            // For offices, the image appears instantly (alpha = 1).
             this.updateLayer = (buildingType, assetPrefix, maxLayers, layerArray) => {
                 const count = this.buildingCounts[buildingType];
                 const layerIndex = Math.floor((count - 1) / 3);
-                let desiredAlpha;
-                if (buildingType === 'office') {
-                    desiredAlpha = 1;
-                } else {
-                    const stage = (count - 1) % 3;
-                    desiredAlpha = (stage + 1) / 3; // 0.33, 0.66, or 1.
-                }
+                const stage = (count - 1) % 3;
+                const desiredAlpha = (stage + 1) / 3; // 0.33, 0.66, or 1.
                 if (layerIndex >= maxLayers) {
-                    // Exceeded maximum layers; do nothing.
                     return;
                 }
-                // If this layer hasn't been created yet, create it.
                 if (layerArray.length <= layerIndex) {
                     const key = assetPrefix + (layerIndex + 1);
                     let img = this.add.image(400, 300, key).setOrigin(0.5).setDepth(2);
                     img.setAlpha(desiredAlpha);
                     layerArray.push(img);
                 } else {
-                    // Update the existing layer's alpha if needed.
                     let img = layerArray[layerIndex];
                     this.tweens.add({
                         targets: img,
@@ -260,8 +251,8 @@ if (typeof Phaser === 'undefined') {
             };
 
             // Add the "Initiate Training Run" button in the top right corner.
-            // This button is created in the MainScene so it can directly trigger the training run.
-            let trainingButton = this.add.text(700, 20, 'Initiate Training Run', {
+            // Moved down to y = 60 so it is visible.
+            let trainingButton = this.add.text(700, 60, 'Initiate Training Run', {
                 font: '16px Arial',
                 fill: '#00ff00',
                 backgroundColor: '#000000',
@@ -270,6 +261,11 @@ if (typeof Phaser === 'undefined') {
             trainingButton.on('pointerdown', () => {
                 this.initiateTrainingRun();
             });
+            // Add an explanatory tip for training the AI near the top center.
+            this.add.text(400, 80, 'Press "Initiate Training Run" to train your AI and boost income! (Requires surplus power)', {
+                font: '16px Arial',
+                fill: '#ffffff'
+            }).setOrigin(0.5).setDepth(10);
 
             this.showNarrative('Build an AI compute cluster in the desert. Start with an office.');
             this.scene.launch('HUDScene');
@@ -281,17 +277,18 @@ if (typeof Phaser === 'undefined') {
                 this.showPopup("Training run already in progress!");
                 return;
             }
-            // Check surplus power (e.g., surplus ≥ 10).
+            // Check for surplus power (e.g., surplus ≥ 10).
             if ((this.electricityGenerated - this.electricityUsed) < 10) {
                 this.showPopup("Not enough surplus power for training run!");
                 return;
             }
             this.trainingRunActive = true;
-            this.trainingExtraLoad = 20; // extra consumption during training run.
+            this.trainingExtraLoad = 20; // Extra consumption during training.
             this.showPopup("Training run initiated!");
-            // Training run lasts for 3 seconds.
+            // Training run lasts 3 seconds.
             this.time.delayedCall(3000, () => {
                 this.trainingRunActive = false;
+                this.trainingExtraLoad = 0;
                 this.showPopup("Training run complete.");
             });
         }
@@ -340,10 +337,16 @@ if (typeof Phaser === 'undefined') {
                 this.purchaseTexts[type].setText(`${this.buildingCounts[type]} purchased`);
             }
 
-            // Update/reveal the corresponding asset layer.
+            // For offices, add a new office image instantly (each purchase adds one, up to 3).
             if (type === 'office') {
-                this.updateLayer('office', 'office', 3, this.officeImages);
+                if (this.buildingCounts.office <= 3) {
+                    let key = 'office' + this.buildingCounts.office;
+                    let img = this.add.image(400, 300, key).setOrigin(0.5).setDepth(2);
+                    img.setAlpha(1);
+                    this.officeImages.push(img);
+                }
             }
+            // For other building types, update layers gradually.
             if (type === 'server_farm') {
                 this.updateLayer('server_farm', 'server', 5, this.serverFarmImages);
             }
@@ -358,7 +361,7 @@ if (typeof Phaser === 'undefined') {
         }
 
         updateBars() {
-            // Draw the usage and output bars with their bottom edge at y = 520.
+            // Draw usage and output bars with bottom edge at y = 520.
             const effectiveUsage = this.electricityUsed + (this.trainingRunActive ? this.trainingExtraLoad : 0);
             const usageHeight = Math.min(effectiveUsage / this.barMaxElectricity, 1) * 200;
             this.powerBarUsage.clear();
@@ -370,7 +373,7 @@ if (typeof Phaser === 'undefined') {
             this.powerBarOutput.fillStyle(outputHeight > 160 ? 0xff0000 : 0x00ff00, 1);
             this.powerBarOutput.fillRect(40, 520 - outputHeight, 16, outputHeight);
 
-            // The heat bar fills fully when heatLevel equals maxHeat.
+            // Heat bar fills fully when heatLevel equals maxHeat.
             const heatHeight = Math.min(this.heatLevel / this.maxHeat, 1) * 200;
             this.heatBar.clear();
             this.heatBar.fillStyle(heatHeight > 160 ? 0xff0000 : 0xffa500, 1);
@@ -378,9 +381,8 @@ if (typeof Phaser === 'undefined') {
         }
 
         updateResources() {
-            // Increase budget as before.
             this.budget += Math.min(this.aiAbility * 10, 10000);
-            // Only increase AI level during a training run.
+            // Increase AI level only during training run.
             if (this.trainingRunActive) {
                 this.aiAbility = Math.min(this.aiAbility + (this.computingPower * 0.01), 1000);
             }
@@ -432,7 +434,6 @@ if (typeof Phaser === 'undefined') {
             this.gflopsText = this.add.text(220, 15, 'G-Flops: 0', { font: '22px Arial', fill: '#ffffff' }).setDepth(10);
             this.electricityText = this.add.text(400, 15, 'Electricity: 0 kW', { font: '22px Arial', fill: '#ffffff' }).setDepth(10);
             this.aiText = this.add.text(600, 15, 'AI: 0', { font: '22px Arial', fill: '#ffffff' }).setDepth(10);
-            // The training run button is added in MainScene, so no need to add it here.
         }
         update() {
             const main = this.scene.get('MainScene');
