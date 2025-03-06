@@ -11,15 +11,16 @@ if (typeof Phaser === 'undefined') {
             this.onClose = data.onClose;
         }
         create() {
-            // Reduced height from 200 to 150.
-            this.add.rectangle(400, 300, 600, 150, 0x333333).setOrigin(0.5);
-            this.add.text(400, 260, this.text, {
+            // Smaller narrative box: 600x130, centered at (400,300)
+            this.add.rectangle(400, 300, 600, 130, 0x333333).setOrigin(0.5);
+            this.add.text(400, 300, this.text, {
                 font: '16px Arial',
                 fill: '#ffffff',
+                align: 'center',
                 wordWrap: { width: 560 }
             }).setOrigin(0.5);
-            // OK button moved higher (y = 440).
-            this.add.text(400, 440, 'OK', {
+            // OK button placed on the bottom edge of the box (approx. y=355)
+            this.add.text(400, 355, 'OK', {
                 font: '20px Arial',
                 fill: '#00ff00',
                 backgroundColor: '#000000',
@@ -43,7 +44,7 @@ if (typeof Phaser === 'undefined') {
             // Background & shop icons.
             this.load.image('desert_backdrop', 'assets/desert_backdrop.png');
             this.load.image('office_high', 'assets/office_high.png');
-            this.load.image('server_rack_high', 'assets/server_rack_high.png'); // shop icon for server farm
+            this.load.image('server_rack_high', 'assets/server_rack_high.png'); // used for shop icon (server farm)
             this.load.image('solar_panel_high', 'assets/solar_panel_high.png');
             this.load.image('cooling_system_high', 'assets/cooling_system_high.png');
 
@@ -82,7 +83,7 @@ if (typeof Phaser === 'undefined') {
             super('MainScene');
         }
         create() {
-            // Draw the desert backdrop as the base.
+            // Draw the desert backdrop.
             this.add.image(400, 300, 'desert_backdrop').setOrigin(0.5).setDepth(0);
 
             // Initialize game resources.
@@ -94,7 +95,7 @@ if (typeof Phaser === 'undefined') {
             this.heatLevel = 0;
             this.maxHeat = 100;
             this.maxElectricity = 100;
-            this.barMaxElectricity = 400;
+            this.barMaxElectricity = 200; // Lower threshold so bars grow more easily.
             this.barMaxHeat = 100;
 
             this.offices = 0;
@@ -102,7 +103,7 @@ if (typeof Phaser === 'undefined') {
 
             // Training run flags.
             this.trainingRunActive = false;
-            this.trainingExtraLoad = 0; // Extra load during training.
+            this.trainingExtraLoad = 0;
             this.lastAIMilestone = 0;
 
             // Building definitions.
@@ -138,7 +139,7 @@ if (typeof Phaser === 'undefined') {
                 }
             };
 
-            // Initialize purchase counts and displays.
+            // Initialize purchase counts and display texts.
             this.buildingCounts = {
                 office: 0,
                 server_farm: 0,
@@ -180,20 +181,20 @@ if (typeof Phaser === 'undefined') {
             });
 
             // --- Create Resource Bars ---
-            this.powerBarOutlineUsage = this.add.rectangle(20, 520, 20, 200, 0xffffff, 0)
-                .setOrigin(0, 1)
-                .setStrokeStyle(2, 0xffffff)
-                .setDepth(10);
-            this.add.text(30, 535, 'Usage', { font: '16px Arial', fill: '#ffffff' })
-                .setOrigin(0.5).setDepth(10);
+            // Instead of "Usage" and "Output", we label them "Power In/Out" over triangle shapes.
+            // Left triangle (power usage): base from (20,520) to (36,520), apex at (28,320).
+            // Right triangle (power output): base from (40,520) to (56,520), apex at (48,320).
+            // We'll clear and draw these triangles in updateBars().
+            // Remove previous text labels and instead add new ones.
+            this.add.text(28, 300, 'Power In/Out', { font: '16px Arial', fill: '#ffffff', align: 'center' }).setOrigin(0.5).setDepth(10);
+            this.add.text(48, 300, 'Power In/Out', { font: '16px Arial', fill: '#ffffff', align: 'center' }).setOrigin(0.5).setDepth(10);
 
-            this.powerBarOutlineOutput = this.add.rectangle(40, 520, 20, 200, 0xffffff, 0)
-                .setOrigin(0, 1)
-                .setStrokeStyle(2, 0xffffff)
-                .setDepth(10);
-            this.add.text(30, 555, 'Output', { font: '16px Arial', fill: '#ffffff' })
-                .setOrigin(0.5).setDepth(10);
+            // (We still draw the outlines of the triangles for reference.)
+            // Draw outlines as white polygons.
+            this.powerBarOutlineUsage = this.add.graphics().setDepth(10);
+            this.powerBarOutlineOutput = this.add.graphics().setDepth(10);
 
+            // Also draw the heat bar outline as before.
             this.heatBarOutline = this.add.rectangle(760, 520, 20, 200, 0xffffff, 0)
                 .setOrigin(0, 1)
                 .setStrokeStyle(2, 0xffffff)
@@ -201,9 +202,10 @@ if (typeof Phaser === 'undefined') {
             this.add.text(760, 540, 'Heat', { font: '16px Arial', fill: '#ffffff' })
                 .setOrigin(0.5).setDepth(10);
 
-            this.powerBarUsage = this.add.graphics().setDepth(10);
-            this.powerBarOutput = this.add.graphics().setDepth(10);
-            this.heatBar = this.add.graphics().setDepth(10);
+            // We'll use graphics objects for the filling of the power bars and heat bar.
+            this.powerBarUsage = this.add.graphics().setDepth(11);
+            this.powerBarOutput = this.add.graphics().setDepth(11);
+            this.heatBar = this.add.graphics().setDepth(11);
 
             // Update resources every second.
             this.time.addEvent({
@@ -243,8 +245,8 @@ if (typeof Phaser === 'undefined') {
             };
 
             // Create the "Initiate Training Run" button, initially hidden.
-            // Moved down to y = 120 to make room for the AI box.
-            this.trainingButton = this.add.text(700, 120, 'Initiate Training Run', {
+            // Now centered (x=400) and moved down to y=130 (beneath the AI box).
+            this.trainingButton = this.add.text(400, 130, 'Initiate Training Run', {
                 font: '16px Arial',
                 fill: '#00ff00',
                 backgroundColor: '#000000',
@@ -255,14 +257,14 @@ if (typeof Phaser === 'undefined') {
                 this.initiateTrainingRun();
             });
 
-            // Show the opening narrative (instructional and witty).
-            this.showNarrative("Welcome to your AI venture! Build offices, server farms, solar panels, and cooling systems to boost your GFlops and increase your AI level. Remember, more GFlops mean faster learning. Use training runs to supercharge your progress when you have surplus power. Good luck!");
+            // Instructive opening narrative.
+            this.showNarrative("Welcome to your AI venture! Build offices, server farms, solar panels, and cooling systems to boost your GFlops and increase your AI level. More GFlops mean faster AI growth, and training runs can supercharge your progress when you have surplus power. Get started and watch your digital brain grow!");
 
             this.lastAIMilestone = 0;
             this.scene.launch('HUDScene');
         }
 
-        // Generate random gibberish for AI milestones 60-100.
+        // Generate random gibberish for AI levels 60–100.
         getRandomGibberish() {
             const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()";
             let result = "";
@@ -273,18 +275,18 @@ if (typeof Phaser === 'undefined') {
             return result;
         }
 
-        // Return narrative based on AI milestone.
+        // Return a narrative message based on the AI milestone.
         getAINarrative(milestone) {
             if (milestone === 10) {
-                return "Level 10: Your first chatbot debuts with a sharp wit.";
+                return "Level 10: Your first chatbot makes its debut with a dash of clever humor.";
             } else if (milestone === 20) {
-                return "Level 20: Government offices now outsource paperwork to your AI.";
+                return "Level 20: Government offices begin outsourcing their mundane tasks to your AI.";
             } else if (milestone === 30) {
-                return "Level 30: Catchy slogans and brilliant quips begin to emerge.";
+                return "Level 30: Your AI starts generating catchy slogans and smart quips.";
             } else if (milestone === 40) {
-                return "Level 40: Humanoid robots now sport your AI's clever insights.";
+                return "Level 40: Humanoid robots now exhibit your AI's sharp insights.";
             } else if (milestone === 50) {
-                return "Level 50: Rumors say your AI is nearing true intelligence.";
+                return "Level 50: Rumors spread that your AI is nearing true intelligence.";
             } else if (milestone >= 60 && milestone <= 100) {
                 return "Level " + milestone + ": " + this.getRandomGibberish();
             } else if (milestone > 100) {
@@ -294,7 +296,6 @@ if (typeof Phaser === 'undefined') {
             }
         }
 
-        // Initiate a training run.
         initiateTrainingRun() {
             if (this.trainingRunActive) {
                 this.showPopup("Training run already in progress!");
@@ -391,27 +392,39 @@ if (typeof Phaser === 'undefined') {
                 this.updateLayer('cooling_system', 'cooling', 3, this.coolingImages);
             }
 
-            // Reveal the training run button when the first server farm is built.
+            // Reveal training button when first server farm is built.
             if (type === 'server_farm' && this.buildingCounts.server_farm === 1) {
                 this.trainingButton.visible = true;
-                this.showNarrative("Great job on building your first server! Now, if you have some surplus power, 'Initiate Training Run' to boost your AI and income.");
+                this.showNarrative("Great job on building your first server! Now, if you have surplus power, you can 'Initiate Training Run' to boost your AI and income.");
             }
 
             this.updateBars();
         }
 
         updateBars() {
+            // For the power bars, draw filled triangles.
             const effectiveUsage = this.electricityUsed + (this.trainingRunActive ? this.trainingExtraLoad : 0);
-            const usageHeight = Math.min(effectiveUsage / this.barMaxElectricity, 1) * 200;
+            const fUsage = Math.min(effectiveUsage / this.barMaxElectricity, 1);
+            // Left triangle (power usage) with base from (20,520) to (36,520), apex at (28,320)
+            let leftBaseLeft = { x: 20, y: 520 };
+            let leftBaseRight = { x: 36, y: 520 };
+            let leftTopY = 520 - fUsage * 200;
+            let leftTopLeft = { x: 28 - 8 * (1 - fUsage), y: leftTopY };
+            let leftTopRight = { x: 28 + 8 * (1 - fUsage), y: leftTopY };
             this.powerBarUsage.clear();
-            this.powerBarUsage.fillStyle(usageHeight > 160 ? 0xff0000 : 0x00ff00, 1);
-            this.powerBarUsage.fillRect(20, 520 - usageHeight, 16, usageHeight);
-
-            const outputHeight = Math.min(this.electricityGenerated / this.barMaxElectricity, 1) * 200;
+            this.powerBarUsage.fillStyle(fUsage > 0.8 ? 0xff0000 : 0x00ff00, 1);
+            this.powerBarUsage.fillPoints([leftBaseLeft, leftBaseRight, leftTopRight, leftTopLeft], true);
+            // Right triangle (power output) with base from (40,520) to (56,520), apex at (48,320)
+            const fOutput = Math.min(this.electricityGenerated / this.barMaxElectricity, 1);
+            let rightBaseLeft = { x: 40, y: 520 };
+            let rightBaseRight = { x: 56, y: 520 };
+            let rightTopY = 520 - fOutput * 200;
+            let rightTopLeft = { x: 48 - 8 * (1 - fOutput), y: rightTopY };
+            let rightTopRight = { x: 48 + 8 * (1 - fOutput), y: rightTopY };
             this.powerBarOutput.clear();
-            this.powerBarOutput.fillStyle(outputHeight > 160 ? 0xff0000 : 0x00ff00, 1);
-            this.powerBarOutput.fillRect(40, 520 - outputHeight, 16, outputHeight);
-
+            this.powerBarOutput.fillStyle(fOutput > 0.8 ? 0xff0000 : 0x00ff00, 1);
+            this.powerBarOutput.fillPoints([rightBaseLeft, rightBaseRight, rightTopRight, rightTopLeft], true);
+            // Heat bar (rectangle as before) remains.
             const heatHeight = Math.min(this.heatLevel / this.maxHeat, 1) * 200;
             this.heatBar.clear();
             this.heatBar.fillStyle(heatHeight > 160 ? 0xff0000 : 0xffa500, 1);
@@ -457,13 +470,15 @@ if (typeof Phaser === 'undefined') {
             super('HUDScene');
         }
         create() {
-            this.add.rectangle(400, 20, 800, 40, 0x333333).setOrigin(0.5).setDepth(9);
-            this.budgetText = this.add.text(20, 15, 'Budget: $10000', { font: '22px Arial', fill: '#ffffff' }).setDepth(10);
-            this.gflopsText = this.add.text(220, 15, 'G-Flops: ' + Math.floor(0), { font: '22px Arial', fill: '#ffffff' }).setDepth(10);
-            this.electricityText = this.add.text(400, 15, 'Electricity: 0 kW', { font: '22px Arial', fill: '#ffffff' }).setDepth(10);
-            // Create a new AI metric box in its own container.
-            this.aiBox = this.add.rectangle(400, 70, 220, 60, 0x000000).setStrokeStyle(2, 0x00ff00).setDepth(10);
-            this.aiMetricText = this.add.text(400, 70, 'AI: 0', { font: 'bold 36px Arial', fill: '#00ff00' }).setOrigin(0.5).setDepth(11);
+            // Center the three top labels (Budget, G-Flops, Electricity) in one row.
+            // We'll place them at x = 150, 400, and 650.
+            this.budgetText = this.add.text(150, 15, 'Budget: $10000', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
+            this.gflopsText = this.add.text(400, 15, 'G-Flops: 0', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
+            this.electricityText = this.add.text(650, 15, 'Electricity: 0 kW', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
+            // The AI metric is now displayed in its own box.
+            // Shrink the AI box by 20%: new dimensions 176x48, font size 28px.
+            this.aiBox = this.add.rectangle(400, 70, 176, 48, 0x000000).setStrokeStyle(2, 0x00ff00).setDepth(10);
+            this.aiMetricText = this.add.text(400, 70, 'AI: 0', { font: 'bold 28px Arial', fill: '#00ff00' }).setOrigin(0.5).setDepth(11);
         }
         update() {
             const main = this.scene.get('MainScene');
