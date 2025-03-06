@@ -12,7 +12,7 @@ if (typeof Phaser === 'undefined') {
             this.onClose = data.onClose;
         }
         create() {
-            // Narrative box: 600x130 centered at (400,300)
+            // Smaller narrative box: 600x130 centered at (400,300)
             this.add.rectangle(400, 300, 600, 130, 0x333333).setOrigin(0.5);
             this.add.text(400, 300, this.text, {
                 font: '16px Arial',
@@ -20,7 +20,7 @@ if (typeof Phaser === 'undefined') {
                 align: 'center',
                 wordWrap: { width: 560 }
             }).setOrigin(0.5);
-            // OK button moved down to y = 460.
+            // OK button moved down 10 pixels (now at y = 460).
             this.add.text(400, 460, 'OK', {
                 font: '20px Arial',
                 fill: '#00ff00',
@@ -45,7 +45,7 @@ if (typeof Phaser === 'undefined') {
             // Background & shop icons.
             this.load.image('desert_backdrop', 'assets/desert_backdrop.png');
             this.load.image('office_high', 'assets/office_high.png');
-            this.load.image('server_rack_high', 'assets/server_rack_high.png'); // shop icon for server farm
+            this.load.image('server_rack_high', 'assets/server_rack_high.png'); // Shop icon for server farm.
             this.load.image('solar_panel_high', 'assets/solar_panel_high.png');
             this.load.image('cooling_system_high', 'assets/cooling_system_high.png');
 
@@ -96,7 +96,7 @@ if (typeof Phaser === 'undefined') {
             this.heatLevel = 0;
             this.maxHeat = 100;
             this.maxElectricity = 100;
-            // Lower thresholds so power bars grow more easily.
+            // Lower threshold so power bars grow more easily.
             this.barMaxElectricity = 200;
             this.barMaxHeat = 100;
 
@@ -141,7 +141,7 @@ if (typeof Phaser === 'undefined') {
                 }
             };
 
-            // Initialize purchase counts and displays.
+            // Initialize purchase counts and display texts.
             this.buildingCounts = {
                 office: 0,
                 server_farm: 0,
@@ -183,23 +183,36 @@ if (typeof Phaser === 'undefined') {
             });
 
             // --- Create Resource Bars ---
-            // Remove any extra outlines (white triangles) – we now use simple rectangular bars.
+            // We'll use simple rectangular bars.
             this.powerBarUsage = this.add.graphics().setDepth(11);
             this.powerBarOutput = this.add.graphics().setDepth(11);
             this.heatBar = this.add.graphics().setDepth(11);
 
-            // Add a single "Power" label above "In/Out" on the left.
-            this.add.text(28, 540, 'Power\nIn/Out', { font: '16px Arial', fill: '#ffffff', align: 'center' })
+            // Draw outlines for the bars.
+            this.powerBarOutlineUsage = this.add.rectangle(20, 520, 16, 200, 0xffffff, 0)
+                .setOrigin(0, 1)
+                .setStrokeStyle(2, 0xffffff)
+                .setDepth(10);
+            this.powerBarOutlineOutput = this.add.rectangle(40, 520, 16, 200, 0xffffff, 0)
+                .setOrigin(0, 1)
+                .setStrokeStyle(2, 0xffffff)
+                .setDepth(10);
+            this.heatBarOutline = this.add.rectangle(760, 520, 16, 200, 0xffffff, 0)
+                .setOrigin(0, 1)
+                .setStrokeStyle(2, 0xffffff)
+                .setDepth(10);
+            // Add the left bar label as two lines ("Power" on the first line, "In/Out" on the second)
+            this.add.text(28, 540, "Power\nIn/Out", { font: '16px Arial', fill: '#ffffff', align: 'center' })
                 .setOrigin(0.5).setDepth(10);
 
-            // --- HUD Top Section ---
-            // Background rectangle for the top labels.
+            // --- Create HUD Top Section ---
+            // Coloured rectangle background for top HUD.
             this.add.rectangle(400, 20, 800, 40, 0x333333).setOrigin(0.5).setDepth(9);
-            // Shift the top labels 50 pixels left.
+            // Center top labels, moved 50 pixels left.
             this.budgetText = this.add.text(100, 15, 'Budget: $10000', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
             this.gflopsText = this.add.text(350, 15, 'G-Flops: 0', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
             this.electricityText = this.add.text(600, 15, 'Electricity: 0 kW', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
-            // AI metric box remains centered.
+            // AI box (shrunk by 20%) with bold green text.
             this.aiBox = this.add.rectangle(400, 70, 176, 48, 0x000000)
                 .setStrokeStyle(2, 0x00ff00).setDepth(10);
             this.aiMetricText = this.add.text(400, 70, 'AI: 0', { font: 'bold 28px Arial', fill: '#00ff00' })
@@ -224,13 +237,13 @@ if (typeof Phaser === 'undefined') {
             this.lastAIMilestone = 0;
             this.scene.launch('HUDScene');
 
-            // Arrays for asset images.
+            // Initialize arrays for asset images.
             this.officeImages = [];
             this.serverFarmImages = [];
             this.solarPanels = [];
             this.coolingImages = [];
 
-            // Helper method to update layers gradually for server_farm, solar_panel, and cooling_system.
+            // Helper method to update layers gradually (for server_farm, solar_panel, cooling_system).
             // Offices appear instantly.
             this.updateLayer = (buildingType, assetPrefix, maxLayers, layerArray) => {
                 const count = this.buildingCounts[buildingType];
@@ -304,9 +317,9 @@ if (typeof Phaser === 'undefined') {
 
         updateResources() {
             this.budget += Math.min(this.aiAbility * 10, 10000);
-            // Increase AI level faster during training runs.
+            // Increase AI level more during training run (multiplier increased from 0.01 to 0.1).
             if (this.trainingRunActive) {
-                this.aiAbility = Math.min(this.aiAbility + (this.computingPower * 0.02), 1000);
+                this.aiAbility = Math.min(this.aiAbility + (this.computingPower * 0.1), 1000);
             }
             let milestone = Math.floor(this.aiAbility / 10) * 10;
             if (milestone > this.lastAIMilestone) {
@@ -380,7 +393,7 @@ if (typeof Phaser === 'undefined') {
                 this.updateLayer('cooling_system', 'cooling', 3, this.coolingImages);
             }
 
-            // Reveal training button when first server farm is built.
+            // Reveal training button when the first server farm is built.
             if (type === 'server_farm' && this.buildingCounts.server_farm === 1) {
                 this.trainingButton.visible = true;
                 this.showNarrative("Great job on building your first server! Now, if you have surplus power, you can 'Initiate Training Run' to boost your AI and income.");
@@ -390,21 +403,20 @@ if (typeof Phaser === 'undefined') {
         }
 
         updateBars() {
-            // Draw simple rectangular power bars.
             const effectiveUsage = this.electricityUsed + (this.trainingRunActive ? this.trainingExtraLoad : 0);
             const usageHeight = Math.min(effectiveUsage / this.barMaxElectricity, 1) * 200;
             this.powerBarUsage.clear();
-            this.powerBarUsage.fillStyle(usageHeight > 0.8 ? 0xff0000 : 0x00ff00, 1);
+            this.powerBarUsage.fillStyle(usageHeight > 160 ? 0xff0000 : 0x00ff00, 1);
             this.powerBarUsage.fillRect(20, 520 - usageHeight, 16, usageHeight);
 
             const outputHeight = Math.min(this.electricityGenerated / this.barMaxElectricity, 1) * 200;
             this.powerBarOutput.clear();
-            this.powerBarOutput.fillStyle(outputHeight > 0.8 ? 0xff0000 : 0x00ff00, 1);
+            this.powerBarOutput.fillStyle(outputHeight > 160 ? 0xff0000 : 0x00ff00, 1);
             this.powerBarOutput.fillRect(40, 520 - outputHeight, 16, outputHeight);
 
             const heatHeight = Math.min(this.heatLevel / this.maxHeat, 1) * 200;
             this.heatBar.clear();
-            this.heatBar.fillStyle(heatHeight > 0.8 ? 0xff0000 : 0xffa500, 1);
+            this.heatBar.fillStyle(heatHeight > 160 ? 0xff0000 : 0xffa500, 1);
             this.heatBar.fillRect(760, 520 - heatHeight, 16, heatHeight);
         }
 
@@ -449,11 +461,11 @@ if (typeof Phaser === 'undefined') {
         create() {
             // Top background rectangle.
             this.add.rectangle(400, 20, 800, 40, 0x333333).setOrigin(0.5).setDepth(9);
-            // Top labels, shifted 50 pixels left.
+            // Centered top labels shifted 50 pixels left.
             this.budgetText = this.add.text(100, 15, 'Budget: $10000', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
             this.gflopsText = this.add.text(350, 15, 'G-Flops: 0', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
             this.electricityText = this.add.text(600, 15, 'Electricity: 0 kW', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
-            // AI metric box.
+            // AI box.
             this.aiBox = this.add.rectangle(400, 70, 176, 48, 0x000000)
                 .setStrokeStyle(2, 0x00ff00).setDepth(10);
             this.aiMetricText = this.add.text(400, 70, 'AI: 0', { font: 'bold 28px Arial', fill: '#00ff00' })
