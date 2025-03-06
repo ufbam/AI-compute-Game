@@ -41,11 +41,21 @@ if (typeof Phaser === 'undefined') {
             // Background & shop icons.
             this.load.image('desert_backdrop', 'assets/desert_backdrop.png');
             this.load.image('office_high', 'assets/office_high.png');
-            this.load.image('server_rack_high', 'assets/server_rack_high.png'); // Used for shop icon of server farm.
+            this.load.image('server_rack_high', 'assets/server_rack_high.png'); // used for shop icon (server farm)
             this.load.image('solar_panel_high', 'assets/solar_panel_high.png');
             this.load.image('cooling_system_high', 'assets/cooling_system_high.png');
 
-            // New asset layers.
+            // Asset layers.
+            // Offices (1 to 3)
+            this.load.image('office1', 'assets/office1.png');
+            this.load.image('office2', 'assets/office2.png');
+            this.load.image('office3', 'assets/office3.png');
+            // Server farms (1 to 5)
+            this.load.image('server1', 'assets/server1.png');
+            this.load.image('server2', 'assets/server2.png');
+            this.load.image('server3', 'assets/server3.png');
+            this.load.image('server4', 'assets/server4.png');
+            this.load.image('server5', 'assets/server5.png');
             // Solar panels (1 to 7)
             this.load.image('solar1', 'assets/solar1.png');
             this.load.image('solar2', 'assets/solar2.png');
@@ -58,16 +68,6 @@ if (typeof Phaser === 'undefined') {
             this.load.image('cooling1', 'assets/cooling1.png');
             this.load.image('cooling2', 'assets/cooling2.png');
             this.load.image('cooling3', 'assets/cooling3.png');
-            // Offices (1 to 3)
-            this.load.image('office1', 'assets/office1.png');
-            this.load.image('office2', 'assets/office2.png');
-            this.load.image('office3', 'assets/office3.png');
-            // Server farms (1 to 5)
-            this.load.image('server1', 'assets/server1.png');
-            this.load.image('server2', 'assets/server2.png');
-            this.load.image('server3', 'assets/server3.png');
-            this.load.image('server4', 'assets/server4.png');
-            this.load.image('server5', 'assets/server5.png');
         }
         create() {
             this.scene.start('MainScene');
@@ -83,7 +83,7 @@ if (typeof Phaser === 'undefined') {
             // Draw the desert backdrop as the base.
             this.add.image(400, 300, 'desert_backdrop').setOrigin(0.5).setDepth(0);
 
-            // No overlay image is needed now—the overall picture will be built up from individual layers.
+            // (No overlay image is needed now—the final picture is built up by the new layers.)
 
             // Initialize game resources.
             this.budget = 10000;
@@ -95,13 +95,13 @@ if (typeof Phaser === 'undefined') {
             this.maxHeat = 100; // When heatLevel reaches 100, the heat bar is full.
             this.maxElectricity = 100;
             this.barMaxElectricity = 400;
-            // For the heat bar, use maxHeat so it fills when heatLevel reaches 100.
-            this.barMaxHeat = 100; 
+            // For the heat bar, we want it to fill fully when heatLevel == maxHeat.
+            this.barMaxHeat = 100;
 
             this.offices = 0;
             this.servers = 0;
 
-            // Initialize building definitions.
+            // Building definitions.
             // Note: "server_rack" is renamed to "server_farm".
             this.buildings = {
                 office: {
@@ -135,7 +135,7 @@ if (typeof Phaser === 'undefined') {
                 }
             };
 
-            // Initialize purchase counts and text displays.
+            // Initialize purchase counts and create purchase count displays.
             this.buildingCounts = {
                 office: 0,
                 server_farm: 0,
@@ -182,7 +182,7 @@ if (typeof Phaser === 'undefined') {
             });
 
             // --- Create Resource Bars ---
-            // Their bottom edge is positioned at y = 520 (just above the shop HUD).
+            // Their bottom edge is at y = 520 (just above the shop HUD).
             this.powerBarOutlineUsage = this.add.rectangle(20, 520, 20, 200, 0xffffff, 0)
                 .setOrigin(0, 1)
                 .setStrokeStyle(2, 0xffffff)
@@ -216,11 +216,42 @@ if (typeof Phaser === 'undefined') {
                 loop: true
             });
 
-            // Arrays to hold the revealed asset images.
+            // Arrays to hold the revealed asset images for each type.
             this.officeImages = [];
             this.serverFarmImages = [];
             this.solarPanels = [];
             this.coolingImages = [];
+
+            // Helper function to update/reveal a layer gradually.
+            // For a given building type, each layer goes through 3 stages:
+            // stage 0: alpha = 1/3, stage 1: alpha = 2/3, stage 2: alpha = 1.
+            this.updateLayer = (buildingType, assetPrefix, maxLayers, layerArray) => {
+                const count = this.buildingCounts[buildingType];
+                // Determine which layer index (0-indexed) this purchase affects.
+                const layerIndex = Math.floor((count - 1) / 3);
+                // Determine stage within this layer (0, 1, or 2).
+                const stage = (count - 1) % 3;
+                const desiredAlpha = (stage + 1) / 3; // 0.33, 0.66, or 1.
+                if (layerIndex >= maxLayers) {
+                    // Exceeded maximum layers for this building type; do nothing.
+                    return;
+                }
+                // If this layer hasn't been created yet, create it.
+                if (layerArray.length <= layerIndex) {
+                    const key = assetPrefix + (layerIndex + 1);
+                    let img = this.add.image(400, 300, key).setOrigin(0.5).setDepth(2);
+                    img.setAlpha(desiredAlpha);
+                    layerArray.push(img);
+                } else {
+                    // Update the existing layer's alpha if it's not already at the desired value.
+                    let img = layerArray[layerIndex];
+                    this.tweens.add({
+                        targets: img,
+                        alpha: desiredAlpha,
+                        duration: 1000
+                    });
+                }
+            };
 
             this.showNarrative('Build an AI compute cluster in the desert. Start with an office.');
             this.scene.launch('HUDScene');
@@ -270,61 +301,20 @@ if (typeof Phaser === 'undefined') {
                 this.purchaseTexts[type].setText(`${this.buildingCounts[type]} purchased`);
             }
             
-            // Reveal new asset layers according to type.
+            // For each type, update its corresponding layer gradually.
             if (type === 'office') {
-                if (this.buildingCounts.office <= 3) {
-                    let key = 'office' + this.buildingCounts.office;
-                    let sp = this.add.image(400, 300, key).setOrigin(0.5).setDepth(2);
-                    sp.setAlpha(0);
-                    this.officeImages.push(sp);
-                    this.tweens.add({
-                        targets: sp,
-                        alpha: 1,
-                        duration: 1000
-                    });
-                }
+                this.updateLayer('office', 'office', 3, this.officeImages);
             }
             if (type === 'server_farm') {
-                if (this.buildingCounts.server_farm <= 5) {
-                    let key = 'server' + this.buildingCounts.server_farm;
-                    let sp = this.add.image(400, 300, key).setOrigin(0.5).setDepth(2);
-                    sp.setAlpha(0);
-                    this.serverFarmImages.push(sp);
-                    this.tweens.add({
-                        targets: sp,
-                        alpha: 1,
-                        duration: 1000
-                    });
-                }
+                this.updateLayer('server_farm', 'server', 5, this.serverFarmImages);
             }
             if (type === 'solar_panel') {
-                if (this.buildingCounts.solar_panel <= 7) {
-                    let key = 'solar' + this.buildingCounts.solar_panel;
-                    let sp = this.add.image(400, 300, key).setOrigin(0.5).setDepth(2);
-                    sp.setAlpha(0);
-                    this.solarPanels.push(sp);
-                    this.tweens.add({
-                        targets: sp,
-                        alpha: 1,
-                        duration: 1000
-                    });
-                }
+                this.updateLayer('solar_panel', 'solar', 7, this.solarPanels);
             }
             if (type === 'cooling_system') {
-                if (this.buildingCounts.cooling_system <= 3) {
-                    let key = 'cooling' + this.buildingCounts.cooling_system;
-                    let sp = this.add.image(400, 300, key).setOrigin(0.5).setDepth(2);
-                    sp.setAlpha(0);
-                    this.coolingImages.push(sp);
-                    this.tweens.add({
-                        targets: sp,
-                        alpha: 1,
-                        duration: 1000
-                    });
-                }
+                this.updateLayer('cooling_system', 'cooling', 3, this.coolingImages);
             }
             
-            // Update the resource bars.
             this.updateBars();
         }
         
