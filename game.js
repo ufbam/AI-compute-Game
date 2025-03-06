@@ -38,13 +38,15 @@ if (typeof Phaser === 'undefined') {
             super('BootScene');
         }
         preload() {
+            // Background & shop icons.
             this.load.image('desert_backdrop', 'assets/desert_backdrop.png');
-            this.load.image('desert_overlay', 'assets/desert_overlay.png');
             this.load.image('office_high', 'assets/office_high.png');
-            this.load.image('server_rack_high', 'assets/server_rack_high.png');
+            this.load.image('server_rack_high', 'assets/server_rack_high.png'); // Used for shop icon of server farm.
             this.load.image('solar_panel_high', 'assets/solar_panel_high.png');
             this.load.image('cooling_system_high', 'assets/cooling_system_high.png');
-            // Load solar panel images 1 through 7.
+
+            // New asset layers.
+            // Solar panels (1 to 7)
             this.load.image('solar1', 'assets/solar1.png');
             this.load.image('solar2', 'assets/solar2.png');
             this.load.image('solar3', 'assets/solar3.png');
@@ -52,6 +54,20 @@ if (typeof Phaser === 'undefined') {
             this.load.image('solar5', 'assets/solar5.png');
             this.load.image('solar6', 'assets/solar6.png');
             this.load.image('solar7', 'assets/solar7.png');
+            // Cooling systems (1 to 3)
+            this.load.image('cooling1', 'assets/cooling1.png');
+            this.load.image('cooling2', 'assets/cooling2.png');
+            this.load.image('cooling3', 'assets/cooling3.png');
+            // Offices (1 to 3)
+            this.load.image('office1', 'assets/office1.png');
+            this.load.image('office2', 'assets/office2.png');
+            this.load.image('office3', 'assets/office3.png');
+            // Server farms (1 to 5)
+            this.load.image('server1', 'assets/server1.png');
+            this.load.image('server2', 'assets/server2.png');
+            this.load.image('server3', 'assets/server3.png');
+            this.load.image('server4', 'assets/server4.png');
+            this.load.image('server5', 'assets/server5.png');
         }
         create() {
             this.scene.start('MainScene');
@@ -64,17 +80,11 @@ if (typeof Phaser === 'undefined') {
             super('MainScene');
         }
         create() {
-            // Add the desert backdrop as the background.
+            // Draw the desert backdrop as the base.
             this.add.image(400, 300, 'desert_backdrop').setOrigin(0.5).setDepth(0);
-            
-            // Add the desert overlay (final image) on top, starting fully transparent.
-            this.overlay = this.add.image(400, 300, 'desert_overlay').setOrigin(0.5).setDepth(1);
-            this.overlay.setAlpha(0);
-            
-            // Variables for the fade effect.
-            this.overlayFadeStep = 1 / 20; // 20 purchases will fully reveal the overlay.
-            this.purchaseCount = 0;
-            
+
+            // No overlay image is needed now—the overall picture will be built up from individual layers.
+
             // Initialize game resources.
             this.budget = 10000;
             this.electricityGenerated = 0;
@@ -84,14 +94,15 @@ if (typeof Phaser === 'undefined') {
             this.heatLevel = 0;
             this.maxHeat = 100; // When heatLevel reaches 100, the heat bar is full.
             this.maxElectricity = 100;
-            // Visual bar scaling variable for electricity remains.
             this.barMaxElectricity = 400;
-            // Offices and servers.
+            // For the heat bar, use maxHeat so it fills when heatLevel reaches 100.
+            this.barMaxHeat = 100; 
+
             this.offices = 0;
             this.servers = 0;
-            
+
             // Initialize building definitions.
-            // Note: server_rack now generates 15 heat.
+            // Note: "server_rack" is renamed to "server_farm".
             this.buildings = {
                 office: {
                     cost: 2000,
@@ -100,7 +111,7 @@ if (typeof Phaser === 'undefined') {
                     shopSprite: 'office_high',
                     tooltip: 'Required first. Allows 5 servers per office.'
                 },
-                server_rack: {
+                server_farm: {
                     cost: 1000,
                     electricity: -5,
                     computing: 10,
@@ -123,23 +134,23 @@ if (typeof Phaser === 'undefined') {
                     tooltip: 'Reduces heat from servers.'
                 }
             };
-            
-            // Initialize purchase counts and create purchase text objects.
+
+            // Initialize purchase counts and text displays.
             this.buildingCounts = {
                 office: 0,
-                server_rack: 0,
+                server_farm: 0,
                 solar_panel: 0,
                 cooling_system: 0
             };
             this.purchaseTexts = {};
-            
+
             // --- Create the Shop UI ---
             const shopY = 530;
             // Shop background.
             this.add.rectangle(400, shopY + 50, 800, 140, 0x333333).setOrigin(0.5).setDepth(10);
             const shopItems = [
                 { type: 'office', x: 150 },
-                { type: 'server_rack', x: 300 },
+                { type: 'server_farm', x: 300 },
                 { type: 'solar_panel', x: 450 },
                 { type: 'cooling_system', x: 600 }
             ];
@@ -163,13 +174,13 @@ if (typeof Phaser === 'undefined') {
                     font: '12px Arial',
                     fill: '#ffff00'
                 }).setOrigin(0.5).setDepth(10);
-                // Purchased count display ABOVE the shop items.
+                // Purchased count display (placed above the shop items).
                 this.purchaseTexts[item.type] = this.add.text(item.x, shopY - 50, '0 purchased', {
                     font: '12px Arial',
                     fill: '#ffffff'
                 }).setOrigin(0.5).setDepth(10);
             });
-            
+
             // --- Create Resource Bars ---
             // Their bottom edge is positioned at y = 520 (just above the shop HUD).
             this.powerBarOutlineUsage = this.add.rectangle(20, 520, 20, 200, 0xffffff, 0)
@@ -178,25 +189,25 @@ if (typeof Phaser === 'undefined') {
                 .setDepth(10);
             this.add.text(30, 535, 'Usage', { font: '16px Arial', fill: '#ffffff' })
                 .setOrigin(0.5).setDepth(10);
-            
+
             this.powerBarOutlineOutput = this.add.rectangle(40, 520, 20, 200, 0xffffff, 0)
                 .setOrigin(0, 1)
                 .setStrokeStyle(2, 0xffffff)
                 .setDepth(10);
             this.add.text(30, 555, 'Output', { font: '16px Arial', fill: '#ffffff' })
                 .setOrigin(0.5).setDepth(10);
-            
+
             this.heatBarOutline = this.add.rectangle(760, 520, 20, 200, 0xffffff, 0)
                 .setOrigin(0, 1)
                 .setStrokeStyle(2, 0xffffff)
                 .setDepth(10);
             this.add.text(760, 540, 'Heat', { font: '16px Arial', fill: '#ffffff' })
                 .setOrigin(0.5).setDepth(10);
-            
+
             this.powerBarUsage = this.add.graphics().setDepth(10);
             this.powerBarOutput = this.add.graphics().setDepth(10);
             this.heatBar = this.add.graphics().setDepth(10);
-            
+
             // Update resources every second.
             this.time.addEvent({
                 delay: 1000,
@@ -204,10 +215,13 @@ if (typeof Phaser === 'undefined') {
                 callbackScope: this,
                 loop: true
             });
-            
-            // Array to hold solar panel images (for layering).
+
+            // Arrays to hold the revealed asset images.
+            this.officeImages = [];
+            this.serverFarmImages = [];
             this.solarPanels = [];
-            
+            this.coolingImages = [];
+
             this.showNarrative('Build an AI compute cluster in the desert. Start with an office.');
             this.scene.launch('HUDScene');
         }
@@ -223,7 +237,7 @@ if (typeof Phaser === 'undefined') {
                 return;
             }
             // Allow 5 servers per office.
-            if (type === 'server_rack' && this.buildingCounts.server_rack >= this.buildingCounts.office * 5) {
+            if (type === 'server_farm' && this.buildingCounts.server_farm >= this.buildingCounts.office * 5) {
                 this.showPopup('Need another office for more servers!');
                 return;
             }
@@ -248,7 +262,7 @@ if (typeof Phaser === 'undefined') {
             this.computingPower += data.computing || 0;
             this.heatLevel = Math.max(0, newHeat);
             if (type === 'office') this.offices++;
-            if (type === 'server_rack') this.servers++;
+            if (type === 'server_farm') this.servers++;
             
             // Update purchased count and display.
             this.buildingCounts[type] = (this.buildingCounts[type] || 0) + 1;
@@ -256,7 +270,33 @@ if (typeof Phaser === 'undefined') {
                 this.purchaseTexts[type].setText(`${this.buildingCounts[type]} purchased`);
             }
             
-            // For solar panels: reveal next solar image if fewer than 7 are shown.
+            // Reveal new asset layers according to type.
+            if (type === 'office') {
+                if (this.buildingCounts.office <= 3) {
+                    let key = 'office' + this.buildingCounts.office;
+                    let sp = this.add.image(400, 300, key).setOrigin(0.5).setDepth(2);
+                    sp.setAlpha(0);
+                    this.officeImages.push(sp);
+                    this.tweens.add({
+                        targets: sp,
+                        alpha: 1,
+                        duration: 1000
+                    });
+                }
+            }
+            if (type === 'server_farm') {
+                if (this.buildingCounts.server_farm <= 5) {
+                    let key = 'server' + this.buildingCounts.server_farm;
+                    let sp = this.add.image(400, 300, key).setOrigin(0.5).setDepth(2);
+                    sp.setAlpha(0);
+                    this.serverFarmImages.push(sp);
+                    this.tweens.add({
+                        targets: sp,
+                        alpha: 1,
+                        duration: 1000
+                    });
+                }
+            }
             if (type === 'solar_panel') {
                 if (this.buildingCounts.solar_panel <= 7) {
                     let key = 'solar' + this.buildingCounts.solar_panel;
@@ -270,16 +310,21 @@ if (typeof Phaser === 'undefined') {
                     });
                 }
             }
+            if (type === 'cooling_system') {
+                if (this.buildingCounts.cooling_system <= 3) {
+                    let key = 'cooling' + this.buildingCounts.cooling_system;
+                    let sp = this.add.image(400, 300, key).setOrigin(0.5).setDepth(2);
+                    sp.setAlpha(0);
+                    this.coolingImages.push(sp);
+                    this.tweens.add({
+                        targets: sp,
+                        alpha: 1,
+                        duration: 1000
+                    });
+                }
+            }
             
-            // Increase purchase count and update overlay alpha.
-            this.purchaseCount++;
-            let newAlpha = Math.min(1, this.purchaseCount * this.overlayFadeStep);
-            this.tweens.add({
-                targets: this.overlay,
-                alpha: newAlpha,
-                duration: 1000
-            });
-            
+            // Update the resource bars.
             this.updateBars();
         }
         
@@ -295,7 +340,7 @@ if (typeof Phaser === 'undefined') {
             this.powerBarOutput.fillStyle(outputHeight > 160 ? 0xff0000 : 0x00ff00, 1);
             this.powerBarOutput.fillRect(40, 520 - outputHeight, 16, outputHeight);
             
-            // Update heat bar: use maxHeat so that when heatLevel equals maxHeat, the bar is full.
+            // The heat bar fills fully when heatLevel equals maxHeat.
             const heatHeight = Math.min(this.heatLevel / this.maxHeat, 1) * 200;
             this.heatBar.clear();
             this.heatBar.fillStyle(heatHeight > 160 ? 0xff0000 : 0xffa500, 1);
@@ -331,7 +376,7 @@ if (typeof Phaser === 'undefined') {
         }
         
         showPopup(message) {
-            // Raise popup messages by 20 pixels (y = 480).
+            // Raise popup messages by 20 pixels (appear at y = 480).
             const popup = this.add.text(400, 480, message, {
                 font: '20px Arial',
                 fill: '#ffffff',
