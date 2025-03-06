@@ -59,13 +59,12 @@ if (typeof Phaser === 'undefined') {
             // Add the desert backdrop as the background.
             this.add.image(400, 300, 'desert_backdrop').setOrigin(0.5).setDepth(0);
             
-            // Add the desert overlay (final image) on top, but start fully transparent.
+            // Add the desert overlay (final image) on top, starting fully transparent.
             this.overlay = this.add.image(400, 300, 'desert_overlay').setOrigin(0.5).setDepth(1);
             this.overlay.setAlpha(0);
             
-            // Variables to control the fade effect.
-            // For example, with 20 purchases the overlay will be fully opaque.
-            this.overlayFadeStep = 1 / 20;
+            // Variables for the fade effect.
+            this.overlayFadeStep = 1 / 20; // 20 purchases will fully reveal the overlay.
             this.purchaseCount = 0;
             
             // Initialize game resources.
@@ -77,28 +76,29 @@ if (typeof Phaser === 'undefined') {
             this.heatLevel = 0;
             this.maxHeat = 100;
             this.maxElectricity = 100;
-            // Visual bar scaling variables.
+            // For visual bars (using higher max values for smaller increments):
             this.barMaxHeat = 400;
             this.barMaxElectricity = 400;
             this.offices = 0;
             this.servers = 0;
             
-            // Building definitions.
+            // Initialize building definitions.
+            // Note: server_rack now generates 15 heat.
             this.buildings = {
                 office: {
                     cost: 2000,
                     electricity: -10,
                     computing: 0,
                     shopSprite: 'office_high',
-                    tooltip: 'Required first. Allows 3 servers per office.'
+                    tooltip: 'Required first. Allows 5 servers per office.'
                 },
                 server_rack: {
                     cost: 1000,
                     electricity: -5,
                     computing: 10,
-                    heat: 10,
+                    heat: 15,
                     shopSprite: 'server_rack_high',
-                    tooltip: 'Boosts computing power, uses power and generates heat.'
+                    tooltip: 'Boosts computing power, uses power and generates extra heat.'
                 },
                 solar_panel: {
                     cost: 500,
@@ -116,7 +116,16 @@ if (typeof Phaser === 'undefined') {
                 }
             };
             
-            // Create the shop UI.
+            // Initialize purchase counts and create purchase text objects.
+            this.buildingCounts = {
+                office: 0,
+                server_rack: 0,
+                solar_panel: 0,
+                cooling_system: 0
+            };
+            this.purchaseTexts = {};
+            
+            // --- Create the Shop UI ---
             const shopY = 530;
             this.add.rectangle(400, shopY + 50, 800, 140, 0x333333).setOrigin(0.5).setDepth(10);
             const shopItems = [
@@ -142,32 +151,39 @@ if (typeof Phaser === 'undefined') {
                     font: '12px Arial',
                     fill: '#ffff00'
                 }).setOrigin(0.5).setDepth(10);
+                // Create a text object below each shop item for the purchase count.
+                this.purchaseTexts[item.type] = this.add.text(item.x, shopY + 80, '0 purchased', {
+                    font: '12px Arial',
+                    fill: '#ffffff'
+                }).setOrigin(0.5).setDepth(10);
             });
             
-            // Create resource bars.
+            // --- Create Resource Bars ---
+            // We move these down so their bottom edge is at y = 520 (just above the shop HUD).
+            this.powerBarOutlineUsage = this.add.rectangle(20, 520, 20, 200, 0xffffff, 0)
+                .setOrigin(0, 1)
+                .setStrokeStyle(2, 0xffffff)
+                .setDepth(10);
+            this.add.text(30, 535, 'Usage', { font: '16px Arial', fill: '#ffffff' })
+                .setOrigin(0.5).setDepth(10);
+            
+            this.powerBarOutlineOutput = this.add.rectangle(40, 520, 20, 200, 0xffffff, 0)
+                .setOrigin(0, 1)
+                .setStrokeStyle(2, 0xffffff)
+                .setDepth(10);
+            this.add.text(30, 555, 'Output', { font: '16px Arial', fill: '#ffffff' })
+                .setOrigin(0.5).setDepth(10);
+            
+            this.heatBarOutline = this.add.rectangle(760, 520, 20, 200, 0xffffff, 0)
+                .setOrigin(0, 1)
+                .setStrokeStyle(2, 0xffffff)
+                .setDepth(10);
+            this.add.text(760, 540, 'Heat', { font: '16px Arial', fill: '#ffffff' })
+                .setOrigin(0.5).setDepth(10);
+            
             this.powerBarUsage = this.add.graphics().setDepth(10);
-            this.powerBarOutlineUsage = this.add.rectangle(20, 400, 20, 200, 0xffffff, 0)
-                .setOrigin(0, 1)
-                .setStrokeStyle(2, 0xffffff)
-                .setDepth(10);
-            this.add.text(30, 570, 'Usage', { font: '16px Arial', fill: '#ffffff' })
-                .setOrigin(0.5).setDepth(10);
-            
             this.powerBarOutput = this.add.graphics().setDepth(10);
-            this.powerBarOutlineOutput = this.add.rectangle(40, 400, 20, 200, 0xffffff, 0)
-                .setOrigin(0, 1)
-                .setStrokeStyle(2, 0xffffff)
-                .setDepth(10);
-            this.add.text(30, 590, 'Output', { font: '16px Arial', fill: '#ffffff' })
-                .setOrigin(0.5).setDepth(10);
-            
             this.heatBar = this.add.graphics().setDepth(10);
-            this.heatBarOutline = this.add.rectangle(760, 400, 20, 200, 0xffffff, 0)
-                .setOrigin(0, 1)
-                .setStrokeStyle(2, 0xffffff)
-                .setDepth(10);
-            this.add.text(760, 580, 'Heat', { font: '16px Arial', fill: '#ffffff' })
-                .setOrigin(0.5).setDepth(10);
             
             // Update resources every second.
             this.time.addEvent({
@@ -191,7 +207,8 @@ if (typeof Phaser === 'undefined') {
                 this.showPopup('Buy an office first!');
                 return;
             }
-            if (type === 'server_rack' && this.servers >= this.offices * 3) {
+            // Allow 5 servers per office.
+            if (type === 'server_rack' && this.buildingCounts.server_rack >= this.buildingCounts.office * 5) {
                 this.showPopup('Need another office for more servers!');
                 return;
             }
@@ -218,10 +235,15 @@ if (typeof Phaser === 'undefined') {
             if (type === 'office') this.offices++;
             if (type === 'server_rack') this.servers++;
             
-            // Increase the purchase count and update the overlay alpha.
+            // Update purchased count and text.
+            this.buildingCounts[type] = (this.buildingCounts[type] || 0) + 1;
+            if (this.purchaseTexts[type]) {
+                this.purchaseTexts[type].setText(`${this.buildingCounts[type]} purchased`);
+            }
+            
+            // Increase purchase count and fade in the overlay a bit.
             this.purchaseCount++;
             let newAlpha = Math.min(1, this.purchaseCount * this.overlayFadeStep);
-            // Tween the overlay to the new alpha for a smooth fade.
             this.tweens.add({
                 targets: this.overlay,
                 alpha: newAlpha,
@@ -232,23 +254,21 @@ if (typeof Phaser === 'undefined') {
         }
         
         updateBars() {
-            // Update electricity usage bar.
+            // The bars now use a bottom edge of y = 520.
             const usageHeight = Math.min(this.electricityUsed / this.barMaxElectricity, 1) * 200;
             this.powerBarUsage.clear();
             this.powerBarUsage.fillStyle(usageHeight > 160 ? 0xff0000 : 0x00ff00, 1);
-            this.powerBarUsage.fillRect(20, 400 - usageHeight, 16, usageHeight);
+            this.powerBarUsage.fillRect(20, 520 - usageHeight, 16, usageHeight);
             
-            // Update electricity generation bar.
             const outputHeight = Math.min(this.electricityGenerated / this.barMaxElectricity, 1) * 200;
             this.powerBarOutput.clear();
             this.powerBarOutput.fillStyle(outputHeight > 160 ? 0xff0000 : 0x00ff00, 1);
-            this.powerBarOutput.fillRect(40, 400 - outputHeight, 16, outputHeight);
+            this.powerBarOutput.fillRect(40, 520 - outputHeight, 16, outputHeight);
             
-            // Update heat bar.
             const heatHeight = Math.min(this.heatLevel / this.barMaxHeat, 1) * 200;
             this.heatBar.clear();
             this.heatBar.fillStyle(heatHeight > 160 ? 0xff0000 : 0xffa500, 1);
-            this.heatBar.fillRect(760, 400 - heatHeight, 16, heatHeight);
+            this.heatBar.fillRect(760, 520 - heatHeight, 16, heatHeight);
         }
         
         updateResources() {
@@ -323,4 +343,3 @@ if (typeof Phaser === 'undefined') {
 
     const game = new Phaser.Game(config);
 }
-
