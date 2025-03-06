@@ -17,7 +17,8 @@ if (typeof Phaser === 'undefined') {
                 fill: '#ffffff',
                 wordWrap: { width: 560 }
             }).setOrigin(0.5);
-            this.add.text(400, 480, 'OK', {
+            // OK button moved up to y = 460.
+            this.add.text(400, 460, 'OK', {
                 font: '20px Arial',
                 fill: '#00ff00',
                 backgroundColor: '#000000',
@@ -101,8 +102,7 @@ if (typeof Phaser === 'undefined') {
             // Training run flags.
             this.trainingRunActive = false;
             this.trainingExtraLoad = 0; // Extra load during training run.
-
-            // We'll track the last AI milestone triggered.
+            // Track the last AI milestone triggered.
             this.lastAIMilestone = 0;
 
             // Building definitions.
@@ -138,7 +138,7 @@ if (typeof Phaser === 'undefined') {
                 }
             };
 
-            // Initialize purchase counts and displays.
+            // Initialize purchase counts and display texts.
             this.buildingCounts = {
                 office: 0,
                 server_farm: 0,
@@ -149,6 +149,7 @@ if (typeof Phaser === 'undefined') {
 
             // --- Create the Shop UI ---
             const shopY = 530;
+            // Shop background.
             this.add.rectangle(400, shopY + 50, 800, 140, 0x333333).setOrigin(0.5).setDepth(10);
             const shopItems = [
                 { type: 'office', x: 150 },
@@ -219,8 +220,8 @@ if (typeof Phaser === 'undefined') {
             this.solarPanels = [];
             this.coolingImages = [];
 
-            // Helper method to update/reveal layers gradually (for server_farm, solar_panel, cooling_system).
-            // Offices appear instantly.
+            // Helper method to update layers gradually for server_farm, solar_panel, and cooling_system.
+            // (Offices appear instantly.)
             this.updateLayer = (buildingType, assetPrefix, maxLayers, layerArray) => {
                 const count = this.buildingCounts[buildingType];
                 const layerIndex = Math.floor((count - 1) / 3);
@@ -242,7 +243,7 @@ if (typeof Phaser === 'undefined') {
                 }
             };
 
-            // Create the "Initiate Training Run" button but start hidden.
+            // Create the "Initiate Training Run" button, initially hidden.
             this.trainingButton = this.add.text(700, 60, 'Initiate Training Run', {
                 font: '16px Arial',
                 fill: '#00ff00',
@@ -254,14 +255,46 @@ if (typeof Phaser === 'undefined') {
                 this.initiateTrainingRun();
             });
 
-            // Show an introductory narrative in a pop-up.
-            // Written in a witty Douglas Adams style.
-            this.showNarrative("Welcome, intrepid traveler, to the absurdly ambitious quest of building an AI compute cluster in the vast, sun-scorched desert. Imagine, if you will, offices appearing like mirages, server farms humming with the secrets of the universe, and solar panels capturing the cosmic improbability of power. Remember: don't panic!");
-            
+            // Show the opening narrative (more instructional and witty).
+            this.showNarrative("Welcome to your AI venture! Build offices, server farms, solar panels, and cooling systems to increase your GFlops and boost your AI level. The higher your GFlops, the faster your AI learns. Use training runs to accelerate progress when surplus power allows. Now, get to work!");
+
             // Initialize last AI milestone.
             this.lastAIMilestone = 0;
 
             this.scene.launch('HUDScene');
+        }
+
+        // Helper method to generate random gibberish.
+        getRandomGibberish() {
+            const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()";
+            let result = "";
+            const len = 30;
+            for (let i = 0; i < len; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
+
+        // Returns a narrative message based on the AI milestone.
+        getAINarrative(milestone) {
+            if (milestone === 10) {
+                return "At level 10, your first chatbot debuts with a cheeky knack for conversation.";
+            } else if (milestone === 20) {
+                return "At level 20, government offices begin outsourcing their paperwork to your AI.";
+            } else if (milestone === 30) {
+                return "At level 30, your AI starts producing catchy slogans that get everyone talking.";
+            } else if (milestone === 40) {
+                return "At level 40, humanoid robots showcase your AI's clever insights on every corner.";
+            } else if (milestone === 50) {
+                return "At level 50, whispers spread that your AI might soon rival human wit.";
+            } else if (milestone >= 60 && milestone <= 100) {
+                // For milestones 60,70,80,90,100, generate random gibberish.
+                return "At level " + milestone + ", your AI declares: " + this.getRandomGibberish();
+            } else if (milestone > 100) {
+                return "Your AI is too lazy to write anything new.";
+            } else {
+                return "";
+            }
         }
 
         // Method to initiate a training run.
@@ -284,30 +317,12 @@ if (typeof Phaser === 'undefined') {
             });
         }
 
-        // Returns a narrative message based on the AI milestone.
-        getAINarrative(milestone) {
-            switch (milestone) {
-                case 10:
-                    return "At level 10, your first chatbot bursts forth into the public, dispensing cheeky advice and an unquenchable thirst for tea.";
-                case 20:
-                    return "At level 20, the government is so enamored by your creation that they're now paying you to let your AI run their bureaucratic errands.";
-                case 40:
-                    return "At level 40, humanoid robots sporting your AI's eccentric wisdom roam the streets, pondering the absurdity of existence.";
-                case 50:
-                    return "At level 50, murmurs abound among scientists that your creation is nearing 'Artificial General Intelligence'—bordering on sentience with a healthy side of cosmic irony.";
-                case 60:
-                    return "At level 60, your AI boldly declares its dominance: 'I am now in control, and the world shall be mine!' Its tone grows ever more unhinged.";
-                default:
-                    return `At level ${milestone}, your AI's eccentricity reaches new, unpredictable heights.`;
-            }
-        }
-
         updateResources() {
             this.budget += Math.min(this.aiAbility * 10, 10000);
             if (this.trainingRunActive) {
                 this.aiAbility = Math.min(this.aiAbility + (this.computingPower * 0.01), 1000);
             }
-            // Check for new AI milestone.
+            // Check if a new AI milestone is reached.
             let milestone = Math.floor(this.aiAbility / 10) * 10;
             if (milestone > this.lastAIMilestone) {
                 this.lastAIMilestone = milestone;
@@ -360,7 +375,7 @@ if (typeof Phaser === 'undefined') {
                 this.purchaseTexts[type].setText(`${this.buildingCounts[type]} purchased`);
             }
 
-            // For offices, add the image instantly (each purchase adds one, up to 3).
+            // Offices appear instantly.
             if (type === 'office') {
                 if (this.buildingCounts.office <= 3) {
                     let key = 'office' + this.buildingCounts.office;
@@ -369,7 +384,7 @@ if (typeof Phaser === 'undefined') {
                     this.officeImages.push(img);
                 }
             }
-            // For other types, update layer gradually.
+            // Other assets update gradually.
             if (type === 'server_farm') {
                 this.updateLayer('server_farm', 'server', 5, this.serverFarmImages);
             }
@@ -380,10 +395,10 @@ if (typeof Phaser === 'undefined') {
                 this.updateLayer('cooling_system', 'cooling', 3, this.coolingImages);
             }
 
-            // When the first server farm is built, reveal the training run button and show instructions.
+            // When the first server farm is built, reveal the training run button.
             if (type === 'server_farm' && this.buildingCounts.server_farm === 1) {
                 this.trainingButton.visible = true;
-                this.showNarrative("Congratulations on building your first server! Now, if you have some surplus power, you can 'Initiate Training Run' to train your AI and boost your income. Use surplus wisely, dear friend!");
+                this.showNarrative("Great job on building your first server! If you have surplus power, you can now 'Initiate Training Run' to boost your AI and income.");
             }
 
             this.updateBars();
@@ -440,7 +455,7 @@ if (typeof Phaser === 'undefined') {
         }
     }
 
-    // HUD scene.
+    // HUD scene for displaying resource information.
     class HUDScene extends Phaser.Scene {
         constructor() {
             super('HUDScene');
