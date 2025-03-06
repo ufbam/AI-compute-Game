@@ -44,6 +44,11 @@ if (typeof Phaser === 'undefined') {
             this.load.image('server_rack_high', 'assets/server_rack_high.png');
             this.load.image('solar_panel_high', 'assets/solar_panel_high.png');
             this.load.image('cooling_system_high', 'assets/cooling_system_high.png');
+            // Load the 4 solar panel images.
+            this.load.image('solar1', 'assets/solar1.png');
+            this.load.image('solar2', 'assets/solar2.png');
+            this.load.image('solar3', 'assets/solar3.png');
+            this.load.image('solar4', 'assets/solar4.png');
         }
         create() {
             this.scene.start('MainScene');
@@ -76,7 +81,7 @@ if (typeof Phaser === 'undefined') {
             this.heatLevel = 0;
             this.maxHeat = 100;
             this.maxElectricity = 100;
-            // For visual bars (using higher max values for smaller increments):
+            // Visual bar scaling variables.
             this.barMaxHeat = 400;
             this.barMaxElectricity = 400;
             this.offices = 0;
@@ -127,6 +132,7 @@ if (typeof Phaser === 'undefined') {
             
             // --- Create the Shop UI ---
             const shopY = 530;
+            // Shop background.
             this.add.rectangle(400, shopY + 50, 800, 140, 0x333333).setOrigin(0.5).setDepth(10);
             const shopItems = [
                 { type: 'office', x: 150 },
@@ -136,6 +142,7 @@ if (typeof Phaser === 'undefined') {
             ];
             shopItems.forEach(item => {
                 const data = this.buildings[item.type];
+                // Shop item sprite.
                 this.add.sprite(item.x, shopY, data.shopSprite)
                     .setScale(0.0625)
                     .setInteractive({ useHandCursor: true })
@@ -143,23 +150,25 @@ if (typeof Phaser === 'undefined') {
                     .on('pointerover', () => this.showTooltip(item.x, shopY - 80, data.tooltip))
                     .on('pointerout', () => this.hideTooltip())
                     .setDepth(10);
+                // Item name.
                 this.add.text(item.x, shopY + 40, item.type.replace('_', ' '), {
                     font: '14px Arial',
                     fill: '#ffffff'
                 }).setOrigin(0.5).setDepth(10);
+                // Item cost.
                 this.add.text(item.x, shopY + 60, `$${data.cost}`, {
                     font: '12px Arial',
                     fill: '#ffff00'
                 }).setOrigin(0.5).setDepth(10);
-                // Create a text object below each shop item for the purchase count.
-                this.purchaseTexts[item.type] = this.add.text(item.x, shopY + 80, '0 purchased', {
+                // Purchased count display ABOVE the shop items.
+                this.purchaseTexts[item.type] = this.add.text(item.x, shopY - 50, '0 purchased', {
                     font: '12px Arial',
                     fill: '#ffffff'
                 }).setOrigin(0.5).setDepth(10);
             });
             
             // --- Create Resource Bars ---
-            // We move these down so their bottom edge is at y = 520 (just above the shop HUD).
+            // Move these so their bottom edge is at y = 520 (just above the shop HUD).
             this.powerBarOutlineUsage = this.add.rectangle(20, 520, 20, 200, 0xffffff, 0)
                 .setOrigin(0, 1)
                 .setStrokeStyle(2, 0xffffff)
@@ -192,6 +201,9 @@ if (typeof Phaser === 'undefined') {
                 callbackScope: this,
                 loop: true
             });
+            
+            // Array to hold solar panel images (for layering).
+            this.solarPanels = [];
             
             this.showNarrative('Build an AI compute cluster in the desert. Start with an office.');
             this.scene.launch('HUDScene');
@@ -241,7 +253,24 @@ if (typeof Phaser === 'undefined') {
                 this.purchaseTexts[type].setText(`${this.buildingCounts[type]} purchased`);
             }
             
-            // Increase purchase count and fade in the overlay a bit.
+            // For solar panels: if a solar panel is purchased and we have less than 4 displayed, reveal the next one.
+            if (type === 'solar_panel') {
+                if (this.buildingCounts.solar_panel <= 4) {
+                    let key = 'solar' + this.buildingCounts.solar_panel;
+                    // Add the solar panel image on top at depth 2.
+                    let sp = this.add.image(400, 300, key).setOrigin(0.5).setDepth(2);
+                    sp.setAlpha(0);
+                    this.solarPanels.push(sp);
+                    // Fade it in.
+                    this.tweens.add({
+                        targets: sp,
+                        alpha: 1,
+                        duration: 1000
+                    });
+                }
+            }
+            
+            // Increase the purchase count and fade in the overlay a bit.
             this.purchaseCount++;
             let newAlpha = Math.min(1, this.purchaseCount * this.overlayFadeStep);
             this.tweens.add({
@@ -254,7 +283,7 @@ if (typeof Phaser === 'undefined') {
         }
         
         updateBars() {
-            // The bars now use a bottom edge of y = 520.
+            // Draw the bars with their bottom edge at y = 520.
             const usageHeight = Math.min(this.electricityUsed / this.barMaxElectricity, 1) * 200;
             this.powerBarUsage.clear();
             this.powerBarUsage.fillStyle(usageHeight > 160 ? 0xff0000 : 0x00ff00, 1);
@@ -300,7 +329,8 @@ if (typeof Phaser === 'undefined') {
         }
         
         showPopup(message) {
-            const popup = this.add.text(400, 500, message, {
+            // Raise the popup messages by 20 pixels (set y to 480).
+            const popup = this.add.text(400, 480, message, {
                 font: '20px Arial',
                 fill: '#ffffff',
                 backgroundColor: '#ff0000',
