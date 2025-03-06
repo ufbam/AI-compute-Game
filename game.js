@@ -44,11 +44,14 @@ if (typeof Phaser === 'undefined') {
             this.load.image('server_rack_high', 'assets/server_rack_high.png');
             this.load.image('solar_panel_high', 'assets/solar_panel_high.png');
             this.load.image('cooling_system_high', 'assets/cooling_system_high.png');
-            // Load the 4 solar panel images.
+            // Load solar panel images 1 through 7.
             this.load.image('solar1', 'assets/solar1.png');
             this.load.image('solar2', 'assets/solar2.png');
             this.load.image('solar3', 'assets/solar3.png');
             this.load.image('solar4', 'assets/solar4.png');
+            this.load.image('solar5', 'assets/solar5.png');
+            this.load.image('solar6', 'assets/solar6.png');
+            this.load.image('solar7', 'assets/solar7.png');
         }
         create() {
             this.scene.start('MainScene');
@@ -79,11 +82,11 @@ if (typeof Phaser === 'undefined') {
             this.computingPower = 0;
             this.aiAbility = 0;
             this.heatLevel = 0;
-            this.maxHeat = 100;
+            this.maxHeat = 100; // When heatLevel reaches 100, the heat bar is full.
             this.maxElectricity = 100;
-            // Visual bar scaling variables.
-            this.barMaxHeat = 400;
+            // Visual bar scaling variable for electricity remains.
             this.barMaxElectricity = 400;
+            // Offices and servers.
             this.offices = 0;
             this.servers = 0;
             
@@ -168,7 +171,7 @@ if (typeof Phaser === 'undefined') {
             });
             
             // --- Create Resource Bars ---
-            // Move these so their bottom edge is at y = 520 (just above the shop HUD).
+            // Their bottom edge is positioned at y = 520 (just above the shop HUD).
             this.powerBarOutlineUsage = this.add.rectangle(20, 520, 20, 200, 0xffffff, 0)
                 .setOrigin(0, 1)
                 .setStrokeStyle(2, 0xffffff)
@@ -247,21 +250,19 @@ if (typeof Phaser === 'undefined') {
             if (type === 'office') this.offices++;
             if (type === 'server_rack') this.servers++;
             
-            // Update purchased count and text.
+            // Update purchased count and display.
             this.buildingCounts[type] = (this.buildingCounts[type] || 0) + 1;
             if (this.purchaseTexts[type]) {
                 this.purchaseTexts[type].setText(`${this.buildingCounts[type]} purchased`);
             }
             
-            // For solar panels: if a solar panel is purchased and we have less than 4 displayed, reveal the next one.
+            // For solar panels: reveal next solar image if fewer than 7 are shown.
             if (type === 'solar_panel') {
-                if (this.buildingCounts.solar_panel <= 4) {
+                if (this.buildingCounts.solar_panel <= 7) {
                     let key = 'solar' + this.buildingCounts.solar_panel;
-                    // Add the solar panel image on top at depth 2.
                     let sp = this.add.image(400, 300, key).setOrigin(0.5).setDepth(2);
                     sp.setAlpha(0);
                     this.solarPanels.push(sp);
-                    // Fade it in.
                     this.tweens.add({
                         targets: sp,
                         alpha: 1,
@@ -270,7 +271,7 @@ if (typeof Phaser === 'undefined') {
                 }
             }
             
-            // Increase the purchase count and fade in the overlay a bit.
+            // Increase purchase count and update overlay alpha.
             this.purchaseCount++;
             let newAlpha = Math.min(1, this.purchaseCount * this.overlayFadeStep);
             this.tweens.add({
@@ -283,7 +284,7 @@ if (typeof Phaser === 'undefined') {
         }
         
         updateBars() {
-            // Draw the bars with their bottom edge at y = 520.
+            // Draw the usage and output bars with their bottom edge at y = 520.
             const usageHeight = Math.min(this.electricityUsed / this.barMaxElectricity, 1) * 200;
             this.powerBarUsage.clear();
             this.powerBarUsage.fillStyle(usageHeight > 160 ? 0xff0000 : 0x00ff00, 1);
@@ -294,7 +295,8 @@ if (typeof Phaser === 'undefined') {
             this.powerBarOutput.fillStyle(outputHeight > 160 ? 0xff0000 : 0x00ff00, 1);
             this.powerBarOutput.fillRect(40, 520 - outputHeight, 16, outputHeight);
             
-            const heatHeight = Math.min(this.heatLevel / this.barMaxHeat, 1) * 200;
+            // Update heat bar: use maxHeat so that when heatLevel equals maxHeat, the bar is full.
+            const heatHeight = Math.min(this.heatLevel / this.maxHeat, 1) * 200;
             this.heatBar.clear();
             this.heatBar.fillStyle(heatHeight > 160 ? 0xff0000 : 0xffa500, 1);
             this.heatBar.fillRect(760, 520 - heatHeight, 16, heatHeight);
@@ -329,7 +331,7 @@ if (typeof Phaser === 'undefined') {
         }
         
         showPopup(message) {
-            // Raise the popup messages by 20 pixels (set y to 480).
+            // Raise popup messages by 20 pixels (y = 480).
             const popup = this.add.text(400, 480, message, {
                 font: '20px Arial',
                 fill: '#ffffff',
