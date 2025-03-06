@@ -12,7 +12,7 @@ if (typeof Phaser === 'undefined') {
             this.onClose = data.onClose;
         }
         create() {
-            // Reduced narrative box: 600x130 centered at (400,300)
+            // Narrative box: 600x130 centered at (400,300)
             this.add.rectangle(400, 300, 600, 130, 0x333333).setOrigin(0.5);
             this.add.text(400, 300, this.text, {
                 font: '16px Arial',
@@ -20,8 +20,8 @@ if (typeof Phaser === 'undefined') {
                 align: 'center',
                 wordWrap: { width: 560 }
             }).setOrigin(0.5);
-            // OK button moved further down to y = 450.
-            this.add.text(400, 450, 'OK', {
+            // OK button moved down to y = 460.
+            this.add.text(400, 460, 'OK', {
                 font: '20px Arial',
                 fill: '#00ff00',
                 backgroundColor: '#000000',
@@ -84,7 +84,7 @@ if (typeof Phaser === 'undefined') {
             super('MainScene');
         }
         create() {
-            // Draw the desert backdrop as the base.
+            // Draw the desert backdrop.
             this.add.image(400, 300, 'desert_backdrop').setOrigin(0.5).setDepth(0);
 
             // Initialize game resources.
@@ -96,7 +96,7 @@ if (typeof Phaser === 'undefined') {
             this.heatLevel = 0;
             this.maxHeat = 100;
             this.maxElectricity = 100;
-            // Lower threshold so power bars grow more easily.
+            // Lower thresholds so power bars grow more easily.
             this.barMaxElectricity = 200;
             this.barMaxHeat = 100;
 
@@ -141,7 +141,7 @@ if (typeof Phaser === 'undefined') {
                 }
             };
 
-            // Initialize purchase counts and display texts.
+            // Initialize purchase counts and displays.
             this.buildingCounts = {
                 office: 0,
                 server_farm: 0,
@@ -183,37 +183,30 @@ if (typeof Phaser === 'undefined') {
             });
 
             // --- Create Resource Bars ---
-            // We'll revert to rectangular bars.
+            // Remove any extra outlines (white triangles) – we now use simple rectangular bars.
             this.powerBarUsage = this.add.graphics().setDepth(11);
             this.powerBarOutput = this.add.graphics().setDepth(11);
             this.heatBar = this.add.graphics().setDepth(11);
 
-            // Draw outlines for the bars.
-            this.powerBarOutlineUsage = this.add.rectangle(20, 520, 16, 200, 0xffffff, 0)
-                .setOrigin(0, 1).setStrokeStyle(2, 0xffffff).setDepth(10);
-            this.powerBarOutlineOutput = this.add.rectangle(40, 520, 16, 200, 0xffffff, 0)
-                .setOrigin(0, 1).setStrokeStyle(2, 0xffffff).setDepth(10);
-            this.heatBarOutline = this.add.rectangle(760, 520, 16, 200, 0xffffff, 0)
-                .setOrigin(0, 1).setStrokeStyle(2, 0xffffff).setDepth(10);
-            // Add a single "Power In/Out" label at the bottom (same level as the heat label).
-            this.add.text(28, 540, 'Power In/Out', { font: '16px Arial', fill: '#ffffff' })
+            // Add a single "Power" label above "In/Out" on the left.
+            this.add.text(28, 540, 'Power\nIn/Out', { font: '16px Arial', fill: '#ffffff', align: 'center' })
                 .setOrigin(0.5).setDepth(10);
 
             // --- HUD Top Section ---
-            // Add a coloured rectangle as background for the top HUD.
+            // Background rectangle for the top labels.
             this.add.rectangle(400, 20, 800, 40, 0x333333).setOrigin(0.5).setDepth(9);
-            // Center the three top labels.
-            this.budgetText = this.add.text(150, 15, 'Budget: $10000', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
-            this.gflopsText = this.add.text(400, 15, 'G-Flops: 0', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
-            this.electricityText = this.add.text(650, 15, 'Electricity: 0 kW', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
-            // Create the AI box (shrunk by 20%) with a bold, green font.
+            // Shift the top labels 50 pixels left.
+            this.budgetText = this.add.text(100, 15, 'Budget: $10000', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
+            this.gflopsText = this.add.text(350, 15, 'G-Flops: 0', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
+            this.electricityText = this.add.text(600, 15, 'Electricity: 0 kW', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
+            // AI metric box remains centered.
             this.aiBox = this.add.rectangle(400, 70, 176, 48, 0x000000)
                 .setStrokeStyle(2, 0x00ff00).setDepth(10);
             this.aiMetricText = this.add.text(400, 70, 'AI: 0', { font: 'bold 28px Arial', fill: '#00ff00' })
                 .setOrigin(0.5).setDepth(11);
 
             // --- Initiate Training Run Button ---
-            // Now centered at (400,130) under the AI box.
+            // Now centered at (400,130) beneath the AI box.
             this.trainingButton = this.add.text(400, 130, 'Initiate Training Run', {
                 font: '16px Arial',
                 fill: '#00ff00',
@@ -225,19 +218,19 @@ if (typeof Phaser === 'undefined') {
                 this.initiateTrainingRun();
             });
 
-            // Show the opening narrative (instructional and witty).
+            // Opening narrative.
             this.showNarrative("Welcome to your AI venture! Build offices, server farms, solar panels, and cooling systems to boost your GFlops and increase your AI level. More GFlops mean faster AI growth, and training runs can supercharge your progress when you have surplus power. Get started and watch your digital brain grow!");
 
             this.lastAIMilestone = 0;
             this.scene.launch('HUDScene');
-            
-            // Set up arrays for asset images.
+
+            // Arrays for asset images.
             this.officeImages = [];
             this.serverFarmImages = [];
             this.solarPanels = [];
             this.coolingImages = [];
 
-            // Helper method for gradual layer updates (for server_farm, solar_panel, cooling_system).
+            // Helper method to update layers gradually for server_farm, solar_panel, and cooling_system.
             // Offices appear instantly.
             this.updateLayer = (buildingType, assetPrefix, maxLayers, layerArray) => {
                 const count = this.buildingCounts[buildingType];
@@ -259,8 +252,6 @@ if (typeof Phaser === 'undefined') {
                     });
                 }
             };
-
-            // End of MainScene.create()
         }
 
         getRandomGibberish() {
@@ -313,8 +304,9 @@ if (typeof Phaser === 'undefined') {
 
         updateResources() {
             this.budget += Math.min(this.aiAbility * 10, 10000);
+            // Increase AI level faster during training runs.
             if (this.trainingRunActive) {
-                this.aiAbility = Math.min(this.aiAbility + (this.computingPower * 0.01), 1000);
+                this.aiAbility = Math.min(this.aiAbility + (this.computingPower * 0.02), 1000);
             }
             let milestone = Math.floor(this.aiAbility / 10) * 10;
             if (milestone > this.lastAIMilestone) {
@@ -388,7 +380,7 @@ if (typeof Phaser === 'undefined') {
                 this.updateLayer('cooling_system', 'cooling', 3, this.coolingImages);
             }
 
-            // Reveal training button when the first server farm is built.
+            // Reveal training button when first server farm is built.
             if (type === 'server_farm' && this.buildingCounts.server_farm === 1) {
                 this.trainingButton.visible = true;
                 this.showNarrative("Great job on building your first server! Now, if you have surplus power, you can 'Initiate Training Run' to boost your AI and income.");
@@ -402,17 +394,17 @@ if (typeof Phaser === 'undefined') {
             const effectiveUsage = this.electricityUsed + (this.trainingRunActive ? this.trainingExtraLoad : 0);
             const usageHeight = Math.min(effectiveUsage / this.barMaxElectricity, 1) * 200;
             this.powerBarUsage.clear();
-            this.powerBarUsage.fillStyle(usageHeight > 160 ? 0xff0000 : 0x00ff00, 1);
+            this.powerBarUsage.fillStyle(usageHeight > 0.8 ? 0xff0000 : 0x00ff00, 1);
             this.powerBarUsage.fillRect(20, 520 - usageHeight, 16, usageHeight);
 
             const outputHeight = Math.min(this.electricityGenerated / this.barMaxElectricity, 1) * 200;
             this.powerBarOutput.clear();
-            this.powerBarOutput.fillStyle(outputHeight > 160 ? 0xff0000 : 0x00ff00, 1);
+            this.powerBarOutput.fillStyle(outputHeight > 0.8 ? 0xff0000 : 0x00ff00, 1);
             this.powerBarOutput.fillRect(40, 520 - outputHeight, 16, outputHeight);
 
             const heatHeight = Math.min(this.heatLevel / this.maxHeat, 1) * 200;
             this.heatBar.clear();
-            this.heatBar.fillStyle(heatHeight > 160 ? 0xff0000 : 0xffa500, 1);
+            this.heatBar.fillStyle(heatHeight > 0.8 ? 0xff0000 : 0xffa500, 1);
             this.heatBar.fillRect(760, 520 - heatHeight, 16, heatHeight);
         }
 
@@ -457,11 +449,11 @@ if (typeof Phaser === 'undefined') {
         create() {
             // Top background rectangle.
             this.add.rectangle(400, 20, 800, 40, 0x333333).setOrigin(0.5).setDepth(9);
-            // Centered labels.
-            this.budgetText = this.add.text(150, 15, 'Budget: $10000', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
-            this.gflopsText = this.add.text(400, 15, 'G-Flops: 0', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
-            this.electricityText = this.add.text(650, 15, 'Electricity: 0 kW', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
-            // AI box in its own container.
+            // Top labels, shifted 50 pixels left.
+            this.budgetText = this.add.text(100, 15, 'Budget: $10000', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
+            this.gflopsText = this.add.text(350, 15, 'G-Flops: 0', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
+            this.electricityText = this.add.text(600, 15, 'Electricity: 0 kW', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
+            // AI metric box.
             this.aiBox = this.add.rectangle(400, 70, 176, 48, 0x000000)
                 .setStrokeStyle(2, 0x00ff00).setDepth(10);
             this.aiMetricText = this.add.text(400, 70, 'AI: 0', { font: 'bold 28px Arial', fill: '#00ff00' })
