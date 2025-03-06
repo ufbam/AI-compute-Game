@@ -90,10 +90,9 @@ if (typeof Phaser === 'undefined') {
             this.computingPower = 0;
             this.aiAbility = 0;
             this.heatLevel = 0;
-            this.maxHeat = 100; // When heatLevel reaches 100, the heat bar is full.
+            this.maxHeat = 100;
             this.maxElectricity = 100;
             this.barMaxElectricity = 400;
-            // For the heat bar, we want it to fill when heatLevel equals maxHeat.
             this.barMaxHeat = 100;
 
             this.offices = 0;
@@ -101,10 +100,12 @@ if (typeof Phaser === 'undefined') {
 
             // Training run flags.
             this.trainingRunActive = false;
-            this.trainingExtraLoad = 0; // extra load during training run
+            this.trainingExtraLoad = 0; // Extra load during training run.
+
+            // We'll track the last AI milestone triggered.
+            this.lastAIMilestone = 0;
 
             // Building definitions.
-            // "server_rack" is now renamed to "server_farm".
             this.buildings = {
                 office: {
                     cost: 2000,
@@ -137,7 +138,7 @@ if (typeof Phaser === 'undefined') {
                 }
             };
 
-            // Initialize purchase counts and purchase display texts.
+            // Initialize purchase counts and displays.
             this.buildingCounts = {
                 office: 0,
                 server_farm: 0,
@@ -148,7 +149,6 @@ if (typeof Phaser === 'undefined') {
 
             // --- Create the Shop UI ---
             const shopY = 530;
-            // Shop background.
             this.add.rectangle(400, shopY + 50, 800, 140, 0x333333).setOrigin(0.5).setDepth(10);
             const shopItems = [
                 { type: 'office', x: 150 },
@@ -158,7 +158,6 @@ if (typeof Phaser === 'undefined') {
             ];
             shopItems.forEach(item => {
                 const data = this.buildings[item.type];
-                // Shop item sprite.
                 this.add.sprite(item.x, shopY, data.shopSprite)
                     .setScale(0.0625)
                     .setInteractive({ useHandCursor: true })
@@ -166,17 +165,14 @@ if (typeof Phaser === 'undefined') {
                     .on('pointerover', () => this.showTooltip(item.x, shopY - 80, data.tooltip))
                     .on('pointerout', () => this.hideTooltip())
                     .setDepth(10);
-                // Item name.
                 this.add.text(item.x, shopY + 40, item.type.replace('_', ' '), {
                     font: '14px Arial',
                     fill: '#ffffff'
                 }).setOrigin(0.5).setDepth(10);
-                // Item cost.
                 this.add.text(item.x, shopY + 60, `$${data.cost}`, {
                     font: '12px Arial',
                     fill: '#ffff00'
                 }).setOrigin(0.5).setDepth(10);
-                // Purchased count display (placed above the shop items).
                 this.purchaseTexts[item.type] = this.add.text(item.x, shopY - 50, '0 purchased', {
                     font: '12px Arial',
                     fill: '#ffffff'
@@ -184,7 +180,6 @@ if (typeof Phaser === 'undefined') {
             });
 
             // --- Create Resource Bars ---
-            // Their bottom edge is at y = 520 (just above the shop HUD).
             this.powerBarOutlineUsage = this.add.rectangle(20, 520, 20, 200, 0xffffff, 0)
                 .setOrigin(0, 1)
                 .setStrokeStyle(2, 0xffffff)
@@ -218,23 +213,20 @@ if (typeof Phaser === 'undefined') {
                 loop: true
             });
 
-            // Arrays to hold the revealed asset images for each type.
+            // Arrays to hold asset images.
             this.officeImages = [];
             this.serverFarmImages = [];
             this.solarPanels = [];
             this.coolingImages = [];
 
-            // Helper method to update/reveal a layer gradually for types other than office.
-            // For server_farm, solar_panel, and cooling_system, each layer goes through 3 stages:
-            // stage 0: alpha = 1/3, stage 1: alpha = 2/3, stage 2: alpha = 1.
+            // Helper method to update/reveal layers gradually (for server_farm, solar_panel, cooling_system).
+            // Offices appear instantly.
             this.updateLayer = (buildingType, assetPrefix, maxLayers, layerArray) => {
                 const count = this.buildingCounts[buildingType];
                 const layerIndex = Math.floor((count - 1) / 3);
                 const stage = (count - 1) % 3;
                 const desiredAlpha = (stage + 1) / 3; // 0.33, 0.66, or 1.
-                if (layerIndex >= maxLayers) {
-                    return;
-                }
+                if (layerIndex >= maxLayers) return;
                 if (layerArray.length <= layerIndex) {
                     const key = assetPrefix + (layerIndex + 1);
                     let img = this.add.image(400, 300, key).setOrigin(0.5).setDepth(2);
@@ -250,24 +242,25 @@ if (typeof Phaser === 'undefined') {
                 }
             };
 
-            // Add the "Initiate Training Run" button in the top right corner.
-            // Moved down to y = 60 so it is visible.
-            let trainingButton = this.add.text(700, 60, 'Initiate Training Run', {
+            // Create the "Initiate Training Run" button but start hidden.
+            this.trainingButton = this.add.text(700, 60, 'Initiate Training Run', {
                 font: '16px Arial',
                 fill: '#00ff00',
                 backgroundColor: '#000000',
                 padding: { x: 10, y: 5 }
             }).setOrigin(0.5).setDepth(10).setInteractive({ useHandCursor: true });
-            trainingButton.on('pointerdown', () => {
+            this.trainingButton.visible = false;
+            this.trainingButton.on('pointerdown', () => {
                 this.initiateTrainingRun();
             });
-            // Add an explanatory tip for training the AI near the top center.
-            this.add.text(400, 80, 'Press "Initiate Training Run" to train your AI and boost income! (Requires surplus power)', {
-                font: '16px Arial',
-                fill: '#ffffff'
-            }).setOrigin(0.5).setDepth(10);
 
-            this.showNarrative('Build an AI compute cluster in the desert. Start with an office.');
+            // Show an introductory narrative in a pop-up.
+            // Written in a witty Douglas Adams style.
+            this.showNarrative("Welcome, intrepid traveler, to the absurdly ambitious quest of building an AI compute cluster in the vast, sun-scorched desert. Imagine, if you will, offices appearing like mirages, server farms humming with the secrets of the universe, and solar panels capturing the cosmic improbability of power. Remember: don't panic!");
+            
+            // Initialize last AI milestone.
+            this.lastAIMilestone = 0;
+
             this.scene.launch('HUDScene');
         }
 
@@ -277,20 +270,53 @@ if (typeof Phaser === 'undefined') {
                 this.showPopup("Training run already in progress!");
                 return;
             }
-            // Check for surplus power (e.g., surplus ≥ 10).
             if ((this.electricityGenerated - this.electricityUsed) < 10) {
                 this.showPopup("Not enough surplus power for training run!");
                 return;
             }
             this.trainingRunActive = true;
-            this.trainingExtraLoad = 20; // Extra consumption during training.
+            this.trainingExtraLoad = 20;
             this.showPopup("Training run initiated!");
-            // Training run lasts 3 seconds.
             this.time.delayedCall(3000, () => {
                 this.trainingRunActive = false;
                 this.trainingExtraLoad = 0;
                 this.showPopup("Training run complete.");
             });
+        }
+
+        // Returns a narrative message based on the AI milestone.
+        getAINarrative(milestone) {
+            switch (milestone) {
+                case 10:
+                    return "At level 10, your first chatbot bursts forth into the public, dispensing cheeky advice and an unquenchable thirst for tea.";
+                case 20:
+                    return "At level 20, the government is so enamored by your creation that they're now paying you to let your AI run their bureaucratic errands.";
+                case 40:
+                    return "At level 40, humanoid robots sporting your AI's eccentric wisdom roam the streets, pondering the absurdity of existence.";
+                case 50:
+                    return "At level 50, murmurs abound among scientists that your creation is nearing 'Artificial General Intelligence'—bordering on sentience with a healthy side of cosmic irony.";
+                case 60:
+                    return "At level 60, your AI boldly declares its dominance: 'I am now in control, and the world shall be mine!' Its tone grows ever more unhinged.";
+                default:
+                    return `At level ${milestone}, your AI's eccentricity reaches new, unpredictable heights.`;
+            }
+        }
+
+        updateResources() {
+            this.budget += Math.min(this.aiAbility * 10, 10000);
+            if (this.trainingRunActive) {
+                this.aiAbility = Math.min(this.aiAbility + (this.computingPower * 0.01), 1000);
+            }
+            // Check for new AI milestone.
+            let milestone = Math.floor(this.aiAbility / 10) * 10;
+            if (milestone > this.lastAIMilestone) {
+                this.lastAIMilestone = milestone;
+                let narrative = this.getAINarrative(milestone);
+                if (narrative) {
+                    this.showNarrative(narrative);
+                }
+            }
+            this.updateBars();
         }
 
         buyBuilding(type) {
@@ -303,7 +329,6 @@ if (typeof Phaser === 'undefined') {
                 this.showPopup('Buy an office first!');
                 return;
             }
-            // Allow 5 server farms per office.
             if (type === 'server_farm' && this.buildingCounts.server_farm >= this.buildingCounts.office * 5) {
                 this.showPopup('Need another office for more servers!');
                 return;
@@ -319,7 +344,6 @@ if (typeof Phaser === 'undefined') {
                 return;
             }
 
-            // Deduct cost and update resources.
             this.budget -= data.cost;
             if (data.electricity > 0) {
                 this.electricityGenerated += data.electricity;
@@ -331,13 +355,12 @@ if (typeof Phaser === 'undefined') {
             if (type === 'office') this.offices++;
             if (type === 'server_farm') this.servers++;
 
-            // Update purchase count and its display.
             this.buildingCounts[type] = (this.buildingCounts[type] || 0) + 1;
             if (this.purchaseTexts[type]) {
                 this.purchaseTexts[type].setText(`${this.buildingCounts[type]} purchased`);
             }
 
-            // For offices, add a new office image instantly (each purchase adds one, up to 3).
+            // For offices, add the image instantly (each purchase adds one, up to 3).
             if (type === 'office') {
                 if (this.buildingCounts.office <= 3) {
                     let key = 'office' + this.buildingCounts.office;
@@ -346,7 +369,7 @@ if (typeof Phaser === 'undefined') {
                     this.officeImages.push(img);
                 }
             }
-            // For other building types, update layers gradually.
+            // For other types, update layer gradually.
             if (type === 'server_farm') {
                 this.updateLayer('server_farm', 'server', 5, this.serverFarmImages);
             }
@@ -357,11 +380,16 @@ if (typeof Phaser === 'undefined') {
                 this.updateLayer('cooling_system', 'cooling', 3, this.coolingImages);
             }
 
+            // When the first server farm is built, reveal the training run button and show instructions.
+            if (type === 'server_farm' && this.buildingCounts.server_farm === 1) {
+                this.trainingButton.visible = true;
+                this.showNarrative("Congratulations on building your first server! Now, if you have some surplus power, you can 'Initiate Training Run' to train your AI and boost your income. Use surplus wisely, dear friend!");
+            }
+
             this.updateBars();
         }
 
         updateBars() {
-            // Draw usage and output bars with bottom edge at y = 520.
             const effectiveUsage = this.electricityUsed + (this.trainingRunActive ? this.trainingExtraLoad : 0);
             const usageHeight = Math.min(effectiveUsage / this.barMaxElectricity, 1) * 200;
             this.powerBarUsage.clear();
@@ -373,20 +401,10 @@ if (typeof Phaser === 'undefined') {
             this.powerBarOutput.fillStyle(outputHeight > 160 ? 0xff0000 : 0x00ff00, 1);
             this.powerBarOutput.fillRect(40, 520 - outputHeight, 16, outputHeight);
 
-            // Heat bar fills fully when heatLevel equals maxHeat.
             const heatHeight = Math.min(this.heatLevel / this.maxHeat, 1) * 200;
             this.heatBar.clear();
             this.heatBar.fillStyle(heatHeight > 160 ? 0xff0000 : 0xffa500, 1);
             this.heatBar.fillRect(760, 520 - heatHeight, 16, heatHeight);
-        }
-
-        updateResources() {
-            this.budget += Math.min(this.aiAbility * 10, 10000);
-            // Increase AI level only during training run.
-            if (this.trainingRunActive) {
-                this.aiAbility = Math.min(this.aiAbility + (this.computingPower * 0.01), 1000);
-            }
-            this.updateBars();
         }
 
         showNarrative(text) {
@@ -412,7 +430,6 @@ if (typeof Phaser === 'undefined') {
         }
 
         showPopup(message) {
-            // Raise popup messages by 20 pixels (appear at y = 480).
             const popup = this.add.text(400, 480, message, {
                 font: '20px Arial',
                 fill: '#ffffff',
@@ -423,7 +440,7 @@ if (typeof Phaser === 'undefined') {
         }
     }
 
-    // HUD scene for displaying resource information.
+    // HUD scene.
     class HUDScene extends Phaser.Scene {
         constructor() {
             super('HUDScene');
