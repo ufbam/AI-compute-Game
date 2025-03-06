@@ -83,8 +83,6 @@ if (typeof Phaser === 'undefined') {
             // Draw the desert backdrop as the base.
             this.add.image(400, 300, 'desert_backdrop').setOrigin(0.5).setDepth(0);
 
-            // (No overlay image is needed now—the final picture is built up by the new layers.)
-
             // Initialize game resources.
             this.budget = 10000;
             this.electricityGenerated = 0;
@@ -95,11 +93,15 @@ if (typeof Phaser === 'undefined') {
             this.maxHeat = 100; // When heatLevel reaches 100, the heat bar is full.
             this.maxElectricity = 100;
             this.barMaxElectricity = 400;
-            // For the heat bar, we want it to fill fully when heatLevel == maxHeat.
+            // For the heat bar, we want it to fill when heatLevel equals maxHeat.
             this.barMaxHeat = 100;
 
             this.offices = 0;
             this.servers = 0;
+
+            // Training run flags.
+            this.trainingRunActive = false;
+            this.trainingExtraLoad = 0; // extra load during training run
 
             // Building definitions.
             // Note: "server_rack" is renamed to "server_farm".
@@ -135,7 +137,7 @@ if (typeof Phaser === 'undefined') {
                 }
             };
 
-            // Initialize purchase counts and create purchase count displays.
+            // Initialize purchase counts and purchase display texts.
             this.buildingCounts = {
                 office: 0,
                 server_farm: 0,
@@ -222,18 +224,22 @@ if (typeof Phaser === 'undefined') {
             this.solarPanels = [];
             this.coolingImages = [];
 
-            // Helper function to update/reveal a layer gradually.
-            // For a given building type, each layer goes through 3 stages:
+            // Helper method to update/reveal a layer gradually.
+            // For a given building type (except office), each layer goes through 3 stages:
             // stage 0: alpha = 1/3, stage 1: alpha = 2/3, stage 2: alpha = 1.
+            // For offices, the image appears instantly (alpha = 1).
             this.updateLayer = (buildingType, assetPrefix, maxLayers, layerArray) => {
                 const count = this.buildingCounts[buildingType];
-                // Determine which layer index (0-indexed) this purchase affects.
                 const layerIndex = Math.floor((count - 1) / 3);
-                // Determine stage within this layer (0, 1, or 2).
-                const stage = (count - 1) % 3;
-                const desiredAlpha = (stage + 1) / 3; // 0.33, 0.66, or 1.
+                let desiredAlpha;
+                if (buildingType === 'office') {
+                    desiredAlpha = 1;
+                } else {
+                    const stage = (count - 1) % 3;
+                    desiredAlpha = (stage + 1) / 3; // 0.33, 0.66, or 1.
+                }
                 if (layerIndex >= maxLayers) {
-                    // Exceeded maximum layers for this building type; do nothing.
+                    // Exceeded maximum layers; do nothing.
                     return;
                 }
                 // If this layer hasn't been created yet, create it.
@@ -243,7 +249,7 @@ if (typeof Phaser === 'undefined') {
                     img.setAlpha(desiredAlpha);
                     layerArray.push(img);
                 } else {
-                    // Update the existing layer's alpha if it's not already at the desired value.
+                    // Update the existing layer's alpha if needed.
                     let img = layerArray[layerIndex];
                     this.tweens.add({
                         targets: img,
@@ -253,10 +259,43 @@ if (typeof Phaser === 'undefined') {
                 }
             };
 
+            // Add the "Initiate Training Run" button in the top right corner.
+            // This button is created in the MainScene so it can directly trigger the training run.
+            let trainingButton = this.add.text(700, 20, 'Initiate Training Run', {
+                font: '16px Arial',
+                fill: '#00ff00',
+                backgroundColor: '#000000',
+                padding: { x: 10, y: 5 }
+            }).setOrigin(0.5).setDepth(10).setInteractive({ useHandCursor: true });
+            trainingButton.on('pointerdown', () => {
+                this.initiateTrainingRun();
+            });
+
             this.showNarrative('Build an AI compute cluster in the desert. Start with an office.');
             this.scene.launch('HUDScene');
         }
-        
+
+        // Method to initiate a training run.
+        initiateTrainingRun() {
+            if (this.trainingRunActive) {
+                this.showPopup("Training run already in progress!");
+                return;
+            }
+            // Check surplus power (e.g., surplus ≥ 10).
+            if ((this.electricityGenerated - this.electricityUsed) < 10) {
+                this.showPopup("Not enough surplus power for training run!");
+                return;
+            }
+            this.trainingRunActive = true;
+            this.trainingExtraLoad = 20; // extra consumption during training run.
+            this.showPopup("Training run initiated!");
+            // Training run lasts for 3 seconds.
+            this.time.delayedCall(3000, () => {
+                this.trainingRunActive = false;
+                this.showPopup("Training run complete.");
+            });
+        }
+
         buyBuilding(type) {
             const data = this.buildings[type];
             if (this.budget < data.cost) {
@@ -267,7 +306,7 @@ if (typeof Phaser === 'undefined') {
                 this.showPopup('Buy an office first!');
                 return;
             }
-            // Allow 5 servers per office.
+            // Allow 5 server farms per office.
             if (type === 'server_farm' && this.buildingCounts.server_farm >= this.buildingCounts.office * 5) {
                 this.showPopup('Need another office for more servers!');
                 return;
@@ -282,7 +321,7 @@ if (typeof Phaser === 'undefined') {
                 this.showPopup('Too hot! Add a cooling system.');
                 return;
             }
-            
+
             // Deduct cost and update resources.
             this.budget -= data.cost;
             if (data.electricity > 0) {
@@ -294,14 +333,14 @@ if (typeof Phaser === 'undefined') {
             this.heatLevel = Math.max(0, newHeat);
             if (type === 'office') this.offices++;
             if (type === 'server_farm') this.servers++;
-            
-            // Update purchased count and display.
+
+            // Update purchase count and its display.
             this.buildingCounts[type] = (this.buildingCounts[type] || 0) + 1;
             if (this.purchaseTexts[type]) {
                 this.purchaseTexts[type].setText(`${this.buildingCounts[type]} purchased`);
             }
-            
-            // For each type, update its corresponding layer gradually.
+
+            // Update/reveal the corresponding asset layer.
             if (type === 'office') {
                 this.updateLayer('office', 'office', 3, this.officeImages);
             }
@@ -314,35 +353,40 @@ if (typeof Phaser === 'undefined') {
             if (type === 'cooling_system') {
                 this.updateLayer('cooling_system', 'cooling', 3, this.coolingImages);
             }
-            
+
             this.updateBars();
         }
-        
+
         updateBars() {
             // Draw the usage and output bars with their bottom edge at y = 520.
-            const usageHeight = Math.min(this.electricityUsed / this.barMaxElectricity, 1) * 200;
+            const effectiveUsage = this.electricityUsed + (this.trainingRunActive ? this.trainingExtraLoad : 0);
+            const usageHeight = Math.min(effectiveUsage / this.barMaxElectricity, 1) * 200;
             this.powerBarUsage.clear();
             this.powerBarUsage.fillStyle(usageHeight > 160 ? 0xff0000 : 0x00ff00, 1);
             this.powerBarUsage.fillRect(20, 520 - usageHeight, 16, usageHeight);
-            
+
             const outputHeight = Math.min(this.electricityGenerated / this.barMaxElectricity, 1) * 200;
             this.powerBarOutput.clear();
             this.powerBarOutput.fillStyle(outputHeight > 160 ? 0xff0000 : 0x00ff00, 1);
             this.powerBarOutput.fillRect(40, 520 - outputHeight, 16, outputHeight);
-            
+
             // The heat bar fills fully when heatLevel equals maxHeat.
             const heatHeight = Math.min(this.heatLevel / this.maxHeat, 1) * 200;
             this.heatBar.clear();
             this.heatBar.fillStyle(heatHeight > 160 ? 0xff0000 : 0xffa500, 1);
             this.heatBar.fillRect(760, 520 - heatHeight, 16, heatHeight);
         }
-        
+
         updateResources() {
+            // Increase budget as before.
             this.budget += Math.min(this.aiAbility * 10, 10000);
-            this.aiAbility = Math.min(this.aiAbility + (this.computingPower * 0.01), 1000);
+            // Only increase AI level during a training run.
+            if (this.trainingRunActive) {
+                this.aiAbility = Math.min(this.aiAbility + (this.computingPower * 0.01), 1000);
+            }
             this.updateBars();
         }
-        
+
         showNarrative(text) {
             this.scene.launch('NarrativeScene', {
                 text,
@@ -350,7 +394,7 @@ if (typeof Phaser === 'undefined') {
             });
             this.scene.pause();
         }
-        
+
         showTooltip(x, y, text) {
             if (this.tooltip) this.tooltip.destroy();
             this.tooltip = this.add.text(x, y, text, {
@@ -359,12 +403,12 @@ if (typeof Phaser === 'undefined') {
                 backgroundColor: '#333333'
             }).setOrigin(0.5).setDepth(10);
         }
-        
+
         hideTooltip() {
             if (this.tooltip) this.tooltip.destroy();
             this.tooltip = null;
         }
-        
+
         showPopup(message) {
             // Raise popup messages by 20 pixels (appear at y = 480).
             const popup = this.add.text(400, 480, message, {
@@ -388,6 +432,7 @@ if (typeof Phaser === 'undefined') {
             this.gflopsText = this.add.text(220, 15, 'G-Flops: 0', { font: '22px Arial', fill: '#ffffff' }).setDepth(10);
             this.electricityText = this.add.text(400, 15, 'Electricity: 0 kW', { font: '22px Arial', fill: '#ffffff' }).setDepth(10);
             this.aiText = this.add.text(600, 15, 'AI: 0', { font: '22px Arial', fill: '#ffffff' }).setDepth(10);
+            // The training run button is added in MainScene, so no need to add it here.
         }
         update() {
             const main = this.scene.get('MainScene');
