@@ -295,7 +295,8 @@ if (typeof Phaser === 'undefined') {
 
             // Add a tiny speaker icon in the bottom left for muting/unmuting.
             this.soundIcon = this.add.text(10, 570, '🔊', { font: '24px Arial', fill: '#ffffff' })
-                .setInteractive({ useHandCursor: true });
+                .setInteractive({ useHandCursor: true })
+                .setDepth(20); // Ensuring it appears above the shop panel.
             this.soundIcon.on('pointerdown', () => {
                 soundMuted = !soundMuted;
                 this.soundIcon.setText(soundMuted ? '🔇' : '🔊');
@@ -581,4 +582,3 @@ if (typeof Phaser === 'undefined') {
 
     const game = new Phaser.Game(config);
 }
-
