@@ -8,8 +8,8 @@ function playBeep(frequency, duration) {
     oscillator.type = 'sine';
     oscillator.frequency.value = frequency;
     oscillator.start();
-    // Set gain to one third of its original value.
-    gainNode.gain.setValueAtTime(0.33, audioCtx.currentTime);
+    // Set gain to 0.165 (half of the previous 0.33)
+    gainNode.gain.setValueAtTime(0.165, audioCtx.currentTime);
     gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
     oscillator.stop(audioCtx.currentTime + duration);
 }
@@ -141,6 +141,8 @@ if (typeof Phaser === 'undefined') {
             this.trainingRunActive = false;
             this.trainingExtraLoad = 0;
             this.lastAIMilestone = 0;
+            this.firstTrainingRunCompleted = false;
+            this.gameOver = false;
 
             // Building definitions.
             this.buildings = {
@@ -185,14 +187,14 @@ if (typeof Phaser === 'undefined') {
             this.purchaseTexts = {};
 
             // --- Create the Shop UI ---
-            // Shift shop items five pixels to the right.
+            // Shift shop items another five pixels to the right.
             const shopY = 530;
             this.add.rectangle(400, shopY + 50, 800, 140, 0x333333).setOrigin(0.5).setDepth(10);
             const shopItems = [
-                { type: 'office', x: 155 },
-                { type: 'server_farm', x: 305 },
-                { type: 'solar_panel', x: 455 },
-                { type: 'cooling_system', x: 605 }
+                { type: 'office', x: 160 },          // Previously 155, now 160
+                { type: 'server_farm', x: 310 },      // Previously 305, now 310
+                { type: 'solar_panel', x: 460 },      // Previously 455, now 460
+                { type: 'cooling_system', x: 610 }    // Previously 605, now 610
             ];
             shopItems.forEach(item => {
                 const data = this.buildings[item.type];
@@ -360,11 +362,18 @@ if (typeof Phaser === 'undefined') {
                 this.trainingExtraLoad = 0;
                 this.showPopup("Training run complete.");
                 playBeep(600, 0.1); // Sound effect for training complete.
+                // Show extra narrative after first training run.
+                if (!this.firstTrainingRunCompleted) {
+                    this.showNarrative("Your first training run is complete. If you had more servers, your AI would learn even faster.", false);
+                    this.firstTrainingRunCompleted = true;
+                }
             });
         }
 
         // Update resources; delta is in milliseconds.
         updateResources(delta) {
+            // If game over, skip further updates.
+            if (this.gameOver) return;
             // Scale budget increase over time.
             this.budget += (this.aiAbility * 10) * (delta / 1000);
             if (this.trainingRunActive) {
@@ -378,6 +387,12 @@ if (typeof Phaser === 'undefined') {
                 if (narrative) {
                     this.showNarrative(narrative, false);
                 }
+            }
+            // Check for bankruptcy: no servers purchased and budget has run out.
+            if (!this.gameOver && this.budget <= 0 && this.buildingCounts.server_farm === 0) {
+                this.showNarrative("You are bankrupt. Game Over.", false);
+                this.gameOver = true;
+                this.scene.pause();
             }
             this.updateBars();
         }
