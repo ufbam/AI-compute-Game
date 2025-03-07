@@ -2,7 +2,7 @@ if (typeof Phaser === 'undefined') {
     console.error('Phaser is not loaded. Check the script tag in index.html.');
 } else {
 
-    // Title scene: shows title.png until user clicks.
+    // TitleScene: displays the title screen until the user clicks.
     class TitleScene extends Phaser.Scene {
         constructor() {
             super('TitleScene');
@@ -11,16 +11,15 @@ if (typeof Phaser === 'undefined') {
             this.load.image('title', 'assets/title.png');
         }
         create() {
-            // Display the title image centered.
             this.add.image(400, 300, 'title').setOrigin(0.5);
-            // When the user clicks anywhere, start the Main Game.
+            // Wait for a click to start the BootScene.
             this.input.once('pointerdown', () => {
-                this.scene.start('MainScene');
+                this.scene.start('BootScene');
             });
         }
     }
 
-    // Boot scene: preload all assets.
+    // BootScene: preloads all assets.
     class BootScene extends Phaser.Scene {
         constructor() {
             super('BootScene');
@@ -29,7 +28,7 @@ if (typeof Phaser === 'undefined') {
             // Background & shop icons.
             this.load.image('desert_backdrop', 'assets/desert_backdrop.png');
             this.load.image('office_high', 'assets/office_high.png');
-            this.load.image('server_rack_high', 'assets/server_rack_high.png'); // for server farm shop icon
+            this.load.image('server_rack_high', 'assets/server_rack_high.png'); // shop icon for server farm.
             this.load.image('solar_panel_high', 'assets/solar_panel_high.png');
             this.load.image('cooling_system_high', 'assets/cooling_system_high.png');
 
@@ -58,12 +57,11 @@ if (typeof Phaser === 'undefined') {
             this.load.image('cooling3', 'assets/cooling3.png');
         }
         create() {
-            // Once assets are loaded, start the Title Scene.
-            this.scene.start('TitleScene');
+            this.scene.start('MainScene');
         }
     }
 
-    // Main gameplay scene.
+    // MainScene: main game logic.
     class MainScene extends Phaser.Scene {
         constructor() {
             super('MainScene');
@@ -81,8 +79,7 @@ if (typeof Phaser === 'undefined') {
             this.heatLevel = 0;
             this.maxHeat = 100;
             this.maxElectricity = 100;
-            // Lower threshold so power bars grow more easily.
-            this.barMaxElectricity = 200;
+            this.barMaxElectricity = 200; // Lower threshold so bars grow more easily.
             this.barMaxHeat = 100;
 
             this.offices = 0;
@@ -126,7 +123,7 @@ if (typeof Phaser === 'undefined') {
                 }
             };
 
-            // Initialize purchase counts and displays.
+            // Initialize purchase counts and display texts.
             this.buildingCounts = {
                 office: 0,
                 server_farm: 0,
@@ -168,7 +165,7 @@ if (typeof Phaser === 'undefined') {
             });
 
             // --- Create Resource Bars ---
-            // Simple rectangular bars.
+            // Use simple rectangular bars.
             this.powerBarUsage = this.add.graphics().setDepth(11);
             this.powerBarOutput = this.add.graphics().setDepth(11);
             this.heatBar = this.add.graphics().setDepth(11);
@@ -186,20 +183,21 @@ if (typeof Phaser === 'undefined') {
                 .setOrigin(0, 1)
                 .setStrokeStyle(2, 0xffffff)
                 .setDepth(10);
-            // Left power bar label: two lines ("Power" on first, "In/Out" on second)
+            // Left power bar label: two lines ("Power" then "In/Out").
             this.add.text(28, 540, "Power\nIn/Out", { font: '16px Arial', fill: '#ffffff', align: 'center' })
                 .setOrigin(0.5).setDepth(10);
 
             // --- Create HUD Top Section ---
-            // Background rectangle for top HUD.
+            // Background rectangle for the top HUD.
             this.add.rectangle(400, 20, 800, 40, 0x333333).setOrigin(0.5).setDepth(9);
-            // Centered labels shifted an additional 10 pixels left.
+            // Centered labels shifted an extra 10 pixels left.
             this.budgetText = this.add.text(70, 15, 'Budget: $10000', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
             this.gflopsText = this.add.text(320, 15, 'G-Flops: 0', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
             this.electricityText = this.add.text(570, 15, 'Electricity: 0 kW', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
             // AI metric box.
             this.aiBox = this.add.rectangle(400, 70, 176, 48, 0x000000)
-                .setStrokeStyle(2, 0x00ff00).setDepth(10);
+                .setStrokeStyle(2, 0x00ff00)
+                .setDepth(10);
             this.aiMetricText = this.add.text(400, 70, 'AI: 0', { font: 'bold 28px Arial', fill: '#00ff00' })
                 .setOrigin(0.5).setDepth(11);
 
@@ -216,7 +214,7 @@ if (typeof Phaser === 'undefined') {
                 this.initiateTrainingRun();
             });
 
-            // Opening narrative.
+            // Show the opening narrative.
             this.showNarrative("Welcome to your AI venture! Build offices, server farms, solar panels, and cooling systems to boost your GFlops and increase your AI level. More GFlops mean faster AI growth, and training runs can supercharge your progress. Get started and watch your digital brain evolve!", true);
 
             this.lastAIMilestone = 0;
@@ -234,7 +232,7 @@ if (typeof Phaser === 'undefined') {
                 const count = this.buildingCounts[buildingType];
                 const layerIndex = Math.floor((count - 1) / 3);
                 const stage = (count - 1) % 3;
-                const desiredAlpha = (stage + 1) / 3; // 0.33, 0.66, or 1.
+                const desiredAlpha = (stage + 1) / 3;
                 if (layerIndex >= maxLayers) return;
                 if (layerArray.length <= layerIndex) {
                     const key = assetPrefix + (layerIndex + 1);
@@ -281,7 +279,6 @@ if (typeof Phaser === 'undefined') {
             }
         }
 
-        // Modified showNarrative: second parameter decides if the scene should pause.
         showNarrative(text, pauseGame = true) {
             this.scene.launch('NarrativeScene', {
                 text,
@@ -308,7 +305,6 @@ if (typeof Phaser === 'undefined') {
 
         updateResources() {
             this.budget += Math.min(this.aiAbility * 10, 10000);
-            // Increase AI level during training run using a multiplier of 0.2.
             if (this.trainingRunActive) {
                 this.aiAbility = Math.min(this.aiAbility + (this.computingPower * 0.2), 1000);
             }
@@ -317,7 +313,6 @@ if (typeof Phaser === 'undefined') {
                 this.lastAIMilestone = milestone;
                 let narrative = this.getAINarrative(milestone);
                 if (narrative) {
-                    // For AI milestone narratives, do not pause the scene.
                     this.showNarrative(narrative, false);
                 }
             }
@@ -388,7 +383,6 @@ if (typeof Phaser === 'undefined') {
             // Reveal training button when the first server farm is built.
             if (type === 'server_farm' && this.buildingCounts.server_farm === 1) {
                 this.trainingButton.visible = true;
-                // Show the narrative without pausing the scene.
                 this.showNarrative("Great job on building your first server! Now, if you have surplus power, you can 'Initiate Training Run' to boost your AI and income.", false);
             }
 
@@ -446,7 +440,7 @@ if (typeof Phaser === 'undefined') {
         }
     }
 
-    // HUD scene.
+    // HUDScene: displays top HUD metrics.
     class HUDScene extends Phaser.Scene {
         constructor() {
             super('HUDScene');
@@ -482,24 +476,6 @@ if (typeof Phaser === 'undefined') {
         pixelArt: true,
         backgroundColor: '#000000'
     };
-
-    // Add TitleScene to our list.
-    class TitleScene extends Phaser.Scene {
-        constructor() {
-            super('TitleScene');
-        }
-        preload() {
-            this.load.image('title', 'assets/title.png');
-        }
-        create() {
-            // Show the title screen.
-            this.add.image(400, 300, 'title').setOrigin(0.5);
-            // Wait for user input to continue.
-            this.input.once('pointerdown', () => {
-                this.scene.start('MainScene');
-            });
-        }
-    }
 
     const game = new Phaser.Game(config);
 }
