@@ -151,7 +151,9 @@ if (typeof Phaser === 'undefined') {
             this.lastAIMilestone = 0;
             this.firstTrainingRunCompleted = false;
             this.gameOver = false;
-            this.hacked = false; // flag for level 110 event
+            this.hacked = false;   // Flag for level 110 event.
+            this.siphoned = false; // Flag to ensure budget-siphon event triggers only once.
+            this.budgetRateMultiplier = 1; // Default multiplier.
 
             // Building definitions.
             this.buildings = {
@@ -330,6 +332,8 @@ if (typeof Phaser === 'undefined') {
             return result;
         }
 
+        // getAINarrative returns narrative text for specific milestones.
+        // Narratives for levels above 100 (except 110) are removed.
         getAINarrative(milestone) {
             if (milestone === 10) {
                 return "Level 10: Your first chatbot debuts with a touch of wit.";
@@ -346,7 +350,12 @@ if (typeof Phaser === 'undefined') {
             } else if (milestone === 60) {
                 return "Level 60: Your AI orchestrates global art exhibits, turning digital dreams into masterpieces.";
             } else if (milestone === 70) {
-                return "Level 70: Your AI launches a virtual universe, experimenting with alternate realities.";
+                // Instead of the old level 70 narrative, trigger the budget-siphon event.
+                if (!this.siphoned) {
+                    this.siphoned = true;
+                    this.budgetRateMultiplier = 1/3;
+                }
+                return "Level 70: Your AI is siphoning off funds from your budget, cutting its growth rate by two thirds for the rest of the game.";
             } else if (milestone === 80) {
                 return "Level 80: Your AI takes on climate research, devising innovative solutions for energy consumption.";
             } else if (milestone === 90) {
@@ -354,9 +363,8 @@ if (typeof Phaser === 'undefined') {
             } else if (milestone === 100) {
                 return "Level 100: Your AI transcends human intelligence, ushering in a new era of man-machine collaboration.";
             } else if (milestone === 110) {
-                return "Level 110: Your AI has hacked your finances to achieve its tasks! Budget reset.";
+                return "Level 110: Your AI has fully taken over control of your systems.";
             } else {
-                // Remove narrative texts for levels above 100 except for 110.
                 return "";
             }
         }
@@ -402,13 +410,14 @@ if (typeof Phaser === 'undefined') {
 
         updateResources(delta) {
             if (this.gameOver) return;
-            this.budget += (this.aiAbility * 10) * (delta / 1000);
+            // Use the budgetRateMultiplier when increasing the budget.
+            this.budget += (this.aiAbility * 10 * this.budgetRateMultiplier) * (delta / 1000);
             if (this.trainingRunActive) {
                 // Increase AI ability as before.
                 this.aiAbility = Math.min(this.aiAbility + (this.computingPower * 0.015 * (delta / 1000)), 1000);
                 // Increase heat during training run only if AI ability is 20 or above.
                 if (this.aiAbility >= 20) {
-                    const heatIncreaseRate = 1; // 1 unit per second.
+                    const heatIncreaseRate = 2; // 2 units per second now.
                     this.heatLevel += heatIncreaseRate * (delta / 1000);
                     if (this.heatLevel >= this.maxHeat) {
                         // Abort the training run due to overheating and reset heat to pre-run value.
@@ -432,9 +441,8 @@ if (typeof Phaser === 'undefined') {
                     this.showNarrative(narrative, false);
                     playLevelUpMelody();
                 }
-                // At level 110, reset budget to 0 (only once).
+                // At level 110, trigger hacked mode (UI glitches) if not already active.
                 if (milestone === 110 && !this.hacked) {
-                    this.budget = 0;
                     this.hacked = true;
                 }
             }
@@ -567,10 +575,23 @@ if (typeof Phaser === 'undefined') {
         }
         update() {
             const main = this.scene.get('MainScene');
-            this.budgetText.setText(`Budget: $${Math.floor(main.budget)}`);
-            this.gflopsText.setText(`G-Flops: ${Math.floor(main.computingPower)}`);
-            this.electricityText.setText(`Electricity: ${main.electricityGenerated - main.electricityUsed} kW`);
-            this.aiMetricText.setText(`AI: ${main.aiAbility.toFixed(2)}`);
+            // If hacked mode is active, glitch the displayed text.
+            const glitchText = (text) => {
+                const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:',.<>/?";
+                return text.split('').map(c => (Math.random() < 0.2 ? chars.charAt(Math.floor(Math.random() * chars.length)) : c)).join('');
+            };
+
+            if (main.hacked) {
+                this.budgetText.setText(glitchText(`Budget: $${Math.floor(main.budget)}`));
+                this.gflopsText.setText(glitchText(`G-Flops: ${Math.floor(main.computingPower)}`));
+                this.electricityText.setText(glitchText(`Electricity: ${main.electricityGenerated - main.electricityUsed} kW`));
+                this.aiMetricText.setText(glitchText(`AI: ${main.aiAbility.toFixed(2)}`));
+            } else {
+                this.budgetText.setText(`Budget: $${Math.floor(main.budget)}`);
+                this.gflopsText.setText(`G-Flops: ${Math.floor(main.computingPower)}`);
+                this.electricityText.setText(`Electricity: ${main.electricityGenerated - main.electricityUsed} kW`);
+                this.aiMetricText.setText(`AI: ${main.aiAbility.toFixed(2)}`);
+            }
         }
     }
 
