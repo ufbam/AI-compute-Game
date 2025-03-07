@@ -189,10 +189,10 @@ if (typeof Phaser === 'undefined') {
             this.purchaseTexts = {};
 
             // --- Shop UI ---
-            // The shop panel is drawn as a rectangle at depth 10.
+            // Draw the shop panel at depth 10.
             const shopY = 530;
             this.add.rectangle(400, shopY + 50, 800, 140, 0x333333).setOrigin(0.5).setDepth(10);
-            // Shop items are shifted another 5 pixels to the right.
+            // Shop items are shifted another five pixels to the right.
             const shopItems = [
                 { type: 'office', x: 160 },
                 { type: 'server_farm', x: 310 },
@@ -220,15 +220,15 @@ if (typeof Phaser === 'undefined') {
             });
 
             // --- Resource Bars ---
+            // Create simple bars at depth 11.
             this.powerBarUsage = this.add.graphics().setDepth(11);
             this.powerBarOutput = this.add.graphics().setDepth(11);
             this.heatBar = this.add.graphics().setDepth(11);
-            // (Removed the white outline rectangles behind the bars.)
+            // (Removed white outline rectangles behind the bars.)
 
-            // Left bar label.
+            // Labels for the bars.
             this.add.text(28, 540, "Power\nIn/Out", { font: '16px Arial', fill: '#ffffff', align: 'center' })
                 .setOrigin(0.5).setDepth(10);
-            // Right bar label.
             this.add.text(768, 540, "Heat", { font: '16px Arial', fill: '#ffffff', align: 'center' })
                 .setOrigin(0.5).setDepth(10);
 
@@ -243,8 +243,8 @@ if (typeof Phaser === 'undefined') {
                 .setOrigin(0.5).setDepth(11);
 
             // --- Initiate Training Run Button ---
-            // Moved to bottom right: x = 750, y = 570, depth 21.
-            this.trainingButton = this.add.text(750, 570, 'Initiate Training Run', {
+            // Moved to top right, level with the AI box.
+            this.trainingButton = this.add.text(750, 70, 'Initiate Training Run', {
                 font: '16px Arial',
                 fill: '#00ff00',
                 backgroundColor: '#000000',
@@ -278,25 +278,47 @@ if (typeof Phaser === 'undefined') {
             this.solarPanels = [];
             this.coolingImages = [];
 
-            // Helper method for layered images.
+            // --- updateLayer Helper ---
+            // For building types other than 'solar_panel', use 3 stages.
+            // For 'solar_panel', use 2 stages.
             this.updateLayer = (buildingType, assetPrefix, maxLayers, layerArray) => {
                 const count = this.buildingCounts[buildingType];
-                const layerIndex = Math.floor((count - 1) / 3);
-                const stage = (count - 1) % 3;
-                const desiredAlpha = (stage + 1) / 3;
-                if (layerIndex >= maxLayers) return;
-                if (layerArray.length <= layerIndex) {
-                    const key = assetPrefix + (layerIndex + 1);
-                    let img = this.add.image(400, 300, key).setOrigin(0.5).setDepth(2);
-                    img.setAlpha(desiredAlpha);
-                    layerArray.push(img);
+                if (buildingType === 'solar_panel') {
+                    const layerIndex = Math.floor((count - 1) / 2);
+                    const stage = (count - 1) % 2;
+                    const desiredAlpha = (stage + 1) / 2;
+                    if (layerIndex >= maxLayers) return;
+                    if (layerArray.length <= layerIndex) {
+                        const key = assetPrefix + (layerIndex + 1);
+                        let img = this.add.image(400, 300, key).setOrigin(0.5).setDepth(2);
+                        img.setAlpha(desiredAlpha);
+                        layerArray.push(img);
+                    } else {
+                        let img = layerArray[layerIndex];
+                        this.tweens.add({
+                            targets: img,
+                            alpha: desiredAlpha,
+                            duration: 1000
+                        });
+                    }
                 } else {
-                    let img = layerArray[layerIndex];
-                    this.tweens.add({
-                        targets: img,
-                        alpha: desiredAlpha,
-                        duration: 1000
-                    });
+                    const layerIndex = Math.floor((count - 1) / 3);
+                    const stage = (count - 1) % 3;
+                    const desiredAlpha = (stage + 1) / 3;
+                    if (layerIndex >= maxLayers) return;
+                    if (layerArray.length <= layerIndex) {
+                        const key = assetPrefix + (layerIndex + 1);
+                        let img = this.add.image(400, 300, key).setOrigin(0.5).setDepth(2);
+                        img.setAlpha(desiredAlpha);
+                        layerArray.push(img);
+                    } else {
+                        let img = layerArray[layerIndex];
+                        this.tweens.add({
+                            targets: img,
+                            alpha: desiredAlpha,
+                            duration: 1000
+                        });
+                    }
                 }
             };
         }
