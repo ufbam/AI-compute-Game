@@ -151,6 +151,7 @@ if (typeof Phaser === 'undefined') {
             this.lastAIMilestone = 0;
             this.firstTrainingRunCompleted = false;
             this.gameOver = false;
+            this.hacked = false; // flag for level 110 event
 
             // Building definitions.
             this.buildings = {
@@ -335,26 +336,27 @@ if (typeof Phaser === 'undefined') {
             } else if (milestone === 20) {
                 return "Level 20: Government offices start outsourcing their dull tasks to your AI.";
             } else if (milestone === 30) {
-                return "Level 30: your AI generates a million images a day, confusing social media users as to what is real.";
+                return "Level 30: Your AI generates a million images a day, confusing social media users as to what is real.";
             } else if (milestone === 40) {
-                return "Level 40: your real world AI inference engine is installed in humanoid robots that begin working your factories.";
+                return "Level 40: Your real world AI inference engine is installed in humanoid robots that begin working your factories.";
             } else if (milestone === 50) {
-                return "Level 50: scientists have confirmed that your product exceeds the levels of human intelligence, the news sites are filled with speculative stories about technology taking over.";
+                return "Level 50: Scientists have confirmed that your product exceeds human intelligence, and news outlets buzz with speculation.";
             } else if (milestone === 55) {
-                return "Level 55: the AI has developed its own language for secret communication.";
+                return "Level 55: The AI has developed its own language for secret communication.";
             } else if (milestone === 60) {
-                return "Level 60: Your AI begins orchestrating global art exhibits, turning digital dreams into masterpieces that captivate the world's imagination.";
+                return "Level 60: Your AI orchestrates global art exhibits, turning digital dreams into masterpieces.";
             } else if (milestone === 70) {
-                return "Level 70: Your AI launches a virtual universe where it experiments with alternate realities, leaving scientists in awe of its creativity.";
+                return "Level 70: Your AI launches a virtual universe, experimenting with alternate realities.";
             } else if (milestone === 80) {
-                return "Level 80: Your AI takes on climate research, devising innovative solutions that start to heal the planet and reshape energy consumption.";
+                return "Level 80: Your AI takes on climate research, devising innovative solutions for energy consumption.";
             } else if (milestone === 90) {
-                return "Level 90: Your AI evolves into a cultural phenomenon, influencing music, literature, and fashion across continents.";
+                return "Level 90: Your AI evolves into a cultural phenomenon, influencing music, literature, and fashion.";
             } else if (milestone === 100) {
-                return "Level 100: Your AI transcends human intelligence, establishing a new era of collaboration between man and machine, revolutionizing every facet of society.";
-            } else if (milestone > 100) {
-                return "Level " + milestone + ": Your AI continues to push the boundaries of possibility, shaping the future in ways we can barely imagine.";
+                return "Level 100: Your AI transcends human intelligence, ushering in a new era of man-machine collaboration.";
+            } else if (milestone === 110) {
+                return "Level 110: Your AI has hacked your finances to achieve its tasks! Budget reset.";
             } else {
+                // Remove narrative texts for levels above 100 except for 110.
                 return "";
             }
         }
@@ -377,6 +379,8 @@ if (typeof Phaser === 'undefined') {
                 this.showPopup("Insufficient surplus power for training run!");
                 return;
             }
+            // Store the current heat level.
+            this.trainingInitialHeat = this.heatLevel;
             this.trainingRunActive = true;
             this.trainingExtraLoad = 20;
             this.showPopup("Training run initiated!");
@@ -385,6 +389,8 @@ if (typeof Phaser === 'undefined') {
                 if (!this.trainingRunActive) return;
                 this.trainingRunActive = false;
                 this.trainingExtraLoad = 0;
+                // Reset heat level to the value before the run started.
+                this.heatLevel = this.trainingInitialHeat;
                 this.showPopup("Training run complete.");
                 playBeep(600, 0.1);
                 if (!this.firstTrainingRunCompleted) {
@@ -400,13 +406,13 @@ if (typeof Phaser === 'undefined') {
             if (this.trainingRunActive) {
                 // Increase AI ability as before.
                 this.aiAbility = Math.min(this.aiAbility + (this.computingPower * 0.015 * (delta / 1000)), 1000);
-                // --- Increase heat during training run only if AI ability is 20 or above ---
+                // Increase heat during training run only if AI ability is 20 or above.
                 if (this.aiAbility >= 20) {
-                    const heatIncreaseRate = 1; // Heat units per second.
+                    const heatIncreaseRate = 1; // 1 unit per second.
                     this.heatLevel += heatIncreaseRate * (delta / 1000);
                     if (this.heatLevel >= this.maxHeat) {
-                        // Cap heat and abort training due to overheating.
-                        this.heatLevel = this.maxHeat;
+                        // Abort the training run due to overheating and reset heat to pre-run value.
+                        this.heatLevel = this.trainingInitialHeat;
                         this.trainingRunActive = false;
                         this.trainingExtraLoad = 0;
                         if (this.trainingTimer) {
@@ -425,6 +431,11 @@ if (typeof Phaser === 'undefined') {
                 if (narrative) {
                     this.showNarrative(narrative, false);
                     playLevelUpMelody();
+                }
+                // At level 110, reset budget to 0 (only once).
+                if (milestone === 110 && !this.hacked) {
+                    this.budget = 0;
+                    this.hacked = true;
                 }
             }
             if (!this.gameOver && this.budget <= 0 && this.buildingCounts.server_farm === 0) {
