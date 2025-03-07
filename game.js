@@ -218,8 +218,12 @@ if (typeof Phaser === 'undefined') {
                 .setOrigin(0, 1)
                 .setStrokeStyle(2, 0xffffff)
                 .setDepth(10);
+
             // Left power bar label: two lines ("Power" and "In/Out").
             this.add.text(28, 540, "Power\nIn/Out", { font: '16px Arial', fill: '#ffffff', align: 'center' })
+                .setOrigin(0.5).setDepth(10);
+            // Right heat bar label: "Heat".
+            this.add.text(768, 540, "Heat", { font: '16px Arial', fill: '#ffffff', align: 'center' })
                 .setOrigin(0.5).setDepth(10);
 
             // --- Create HUD Top Section ---
@@ -341,8 +345,8 @@ if (typeof Phaser === 'undefined') {
             // Scale budget increase over time.
             this.budget += (this.aiAbility * 10) * (delta / 1000);
             if (this.trainingRunActive) {
-                // Use a multiplier of 0.03 so that with 1 or 2 servers, a 3-second run raises AI to roughly 1-2.
-                this.aiAbility = Math.min(this.aiAbility + (this.computingPower * 0.03 * (delta / 1000)), 1000);
+                // Use a multiplier of 0.015 (half of 0.03) so that with 1 or 2 servers, a 3-second run raises AI by roughly 1-2.
+                this.aiAbility = Math.min(this.aiAbility + (this.computingPower * 0.015 * (delta / 1000)), 1000);
             }
             let milestone = Math.floor(this.aiAbility / 10) * 10;
             if (milestone > this.lastAIMilestone) {
