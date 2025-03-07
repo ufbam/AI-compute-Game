@@ -109,7 +109,7 @@ if (typeof Phaser === 'undefined') {
                 align: 'center',
                 wordWrap: { width: 560 }
             }).setOrigin(0.5);
-            // OK button moved up by 10 pixels (now at y = 460).
+            // OK button moved up 10 pixels (now at y = 460).
             this.add.text(400, 460, 'OK', {
                 font: '20px Arial',
                 fill: '#00ff00',
@@ -221,7 +221,7 @@ if (typeof Phaser === 'undefined') {
             this.powerBarUsage = this.add.graphics().setDepth(11);
             this.powerBarOutput = this.add.graphics().setDepth(11);
             this.heatBar = this.add.graphics().setDepth(11);
-            // (Removed white outline rectangles behind the bars.)
+            // (White outline rectangles behind the bars have been removed.)
             this.add.text(28, 540, "Power\nIn/Out", { font: '16px Arial', fill: '#ffffff', align: 'center' })
                 .setOrigin(0.5).setDepth(10);
             this.add.text(768, 540, "Heat", { font: '16px Arial', fill: '#ffffff', align: 'center' })
@@ -238,7 +238,7 @@ if (typeof Phaser === 'undefined') {
                 .setOrigin(0.5).setDepth(11);
 
             // --- Initiate Training Run Button ---
-            // Moved to the top center, under the AI box at (400,130).
+            // Placed at top center, under the AI level box.
             this.trainingButton = this.add.text(400, 130, 'Initiate Training Run', {
                 font: '16px Arial',
                 fill: '#00ff00',
@@ -273,13 +273,13 @@ if (typeof Phaser === 'undefined') {
             this.coolingImages = [];
 
             // --- updateLayer Helper ---
-            // For solar panels, use a two-stage fade: first purchase alpha = 0.5, second alpha = 1.
+            // For solar panels, fade in in two stages: first purchase alpha = 0.5, second alpha = 1.
             this.updateLayer = (buildingType, assetPrefix, maxLayers, layerArray) => {
                 const count = this.buildingCounts[buildingType];
                 if (buildingType === 'solar_panel') {
                     const layerIndex = Math.floor((count - 1) / 2);
                     const stage = (count - 1) % 2;
-                    const desiredAlpha = (stage + 1) / 2; // 0.5 or 1.
+                    const desiredAlpha = (stage + 1) / 2; // will be 0.5 for first, 1 for second stage.
                     if (layerIndex >= maxLayers) return;
                     if (layerArray.length <= layerIndex) {
                         const key = assetPrefix + (layerIndex + 1);
@@ -444,97 +444,4 @@ if (typeof Phaser === 'undefined') {
                 if (this.buildingCounts.office <= 3) {
                     let key = 'office' + this.buildingCounts.office;
                     let img = this.add.image(400, 300, key).setOrigin(0.5).setDepth(2);
-                    img.setAlpha(1);
-                    this.officeImages.push(img);
-                }
-            }
-            if (type === 'server_farm') {
-                this.updateLayer('server_farm', 'server', 5, this.serverFarmImages);
-            }
-            if (type === 'solar_panel') {
-                this.updateLayer('solar_panel', 'solar', 7, this.solarPanels);
-            }
-            if (type === 'cooling_system') {
-                this.updateLayer('cooling_system', 'cooling', 3, this.coolingImages);
-            }
-            if (type === 'server_farm' && this.buildingCounts.server_farm === 1) {
-                this.trainingButton.visible = true;
-                this.showNarrative("Great job on building your first server! Now, if you have surplus power, you can 'Initiate Training Run' to boost your AI and income.", false);
-            }
-            this.updateBars();
-        }
-
-        updateBars() {
-            const effectiveUsage = this.electricityUsed + (this.trainingRunActive ? this.trainingExtraLoad : 0);
-            const usageHeight = Math.min(effectiveUsage / this.barMaxElectricity, 1) * 200;
-            this.powerBarUsage.clear();
-            this.powerBarUsage.fillStyle(usageHeight > 0.8 ? 0xff0000 : 0x00ff00, 1);
-            this.powerBarUsage.fillRect(20, 520 - usageHeight, 16, usageHeight);
-            const outputHeight = Math.min(this.electricityGenerated / this.barMaxElectricity, 1) * 200;
-            this.powerBarOutput.clear();
-            this.powerBarOutput.fillStyle(outputHeight > 0.8 ? 0xff0000 : 0x00ff00, 1);
-            this.powerBarOutput.fillRect(40, 520 - outputHeight, 16, outputHeight);
-            const heatHeight = Math.min(this.heatLevel / this.maxHeat, 1) * 200;
-            this.heatBar.clear();
-            this.heatBar.fillStyle(heatHeight > 0.8 ? 0xff0000 : 0xffa500, 1);
-            this.heatBar.fillRect(760, 520 - heatHeight, 16, heatHeight);
-        }
-
-        showTooltip(x, y, text) {
-            if (this.tooltip) this.tooltip.destroy();
-            this.tooltip = this.add.text(x, y, text, { font: '14px Arial', fill: '#ffffff', backgroundColor: '#333333' })
-                .setOrigin(0.5).setDepth(10);
-        }
-
-        hideTooltip() {
-            if (this.tooltip) this.tooltip.destroy();
-            this.tooltip = null;
-        }
-
-        showPopup(message) {
-            const popup = this.add.text(400, 470, message, { // moved up 10 pixels from 480 to 470.
-                font: '20px Arial',
-                fill: '#ffffff',
-                backgroundColor: '#ff0000',
-                padding: { x: 10, y: 10 }
-            }).setOrigin(0.5).setDepth(10);
-            this.time.delayedCall(2000, () => popup.destroy());
-        }
-    }
-
-    // HUDScene: displays HUD metrics.
-    class HUDScene extends Phaser.Scene {
-        constructor() {
-            super('HUDScene');
-        }
-        create() {
-            this.add.rectangle(400, 20, 800, 40, 0x333333).setOrigin(0.5).setDepth(9);
-            this.budgetText = this.add.text(70, 15, 'Budget: $10000', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
-            this.gflopsText = this.add.text(320, 15, 'G-Flops: 0', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
-            this.electricityText = this.add.text(570, 15, 'Electricity: 0 kW', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
-            this.aiBox = this.add.rectangle(400, 70, 176, 48, 0x000000)
-                .setStrokeStyle(2, 0x00ff00).setDepth(10);
-            this.aiMetricText = this.add.text(400, 70, 'AI: 0', { font: 'bold 28px Arial', fill: '#00ff00' })
-                .setOrigin(0.5).setDepth(11);
-        }
-        update() {
-            const main = this.scene.get('MainScene');
-            this.budgetText.setText(`Budget: $${Math.floor(main.budget)}`);
-            this.gflopsText.setText(`G-Flops: ${Math.floor(main.computingPower)}`);
-            this.electricityText.setText(`Electricity: ${main.electricityGenerated - main.electricityUsed} kW`);
-            this.aiMetricText.setText(`AI: ${main.aiAbility.toFixed(2)}`);
-        }
-    }
-
-    // Game configuration.
-    const config = {
-        type: Phaser.AUTO,
-        width: 800,
-        height: 600,
-        scene: [TitleScene, BootScene, MainScene, HUDScene, NarrativeScene],
-        pixelArt: true,
-        backgroundColor: '#000000'
-    };
-
-    const game = new Phaser.Game(config);
-}
+                    img.setAlph
