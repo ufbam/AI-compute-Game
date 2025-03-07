@@ -109,7 +109,7 @@ if (typeof Phaser === 'undefined') {
                 align: 'center',
                 wordWrap: { width: 560 }
             }).setOrigin(0.5);
-            // OK button (positioned near the bottom).
+            // OK button near the bottom.
             this.add.text(400, 460, 'OK', {
                 font: '20px Arial',
                 fill: '#00ff00',
@@ -151,8 +151,9 @@ if (typeof Phaser === 'undefined') {
             this.lastAIMilestone = 0;
             this.firstTrainingRunCompleted = false;
             this.gameOver = false;
-            this.siphoned = false; // Ensure level 70 event triggers only once.
-            this.budgetRateMultiplier = 1; // Default multiplier.
+            this.siphoned = false; // For level 70 event.
+            this.budgetRateMultiplier = 1; // Normal budget growth.
+            this.hacked = false; // For level 110 glitching.
             this.killSwitchButton = null; // Will hold the kill switch button.
 
             // Building definitions.
@@ -240,7 +241,7 @@ if (typeof Phaser === 'undefined') {
                 .setOrigin(0.5).setDepth(11);
 
             // --- Initiate Training Run Button ---
-            // Placed at top center, under the AI level box (at 400,130).
+            // Placed at top center, under the AI level box.
             this.trainingButton = this.add.text(400, 130, 'Initiate Training Run', {
                 font: '16px Arial',
                 fill: '#00ff00',
@@ -249,7 +250,6 @@ if (typeof Phaser === 'undefined') {
             }).setOrigin(0.5).setDepth(21).setInteractive({ useHandCursor: true });
             this.trainingButton.visible = false;
             this.trainingButton.on('pointerdown', () => {
-                // Require at least 20 surplus power to start a training run.
                 if (this.electricityGenerated - this.electricityUsed < 20) {
                     this.showPopup("Insufficient surplus power for training run!");
                     return;
@@ -280,13 +280,13 @@ if (typeof Phaser === 'undefined') {
             this.coolingImages = [];
 
             // --- updateLayer Helper ---
-            // For solar panels, fade in in two stages: first purchase alpha = 0.5, second alpha = 1.
+            // For solar panels, fade in in two stages.
             this.updateLayer = (buildingType, assetPrefix, maxLayers, layerArray) => {
                 const count = this.buildingCounts[buildingType];
                 if (buildingType === 'solar_panel') {
                     const layerIndex = Math.floor((count - 1) / 2);
                     const stage = (count - 1) % 2;
-                    const desiredAlpha = (stage + 1) / 2; // 0.5 for first, 1 for second stage.
+                    const desiredAlpha = (stage + 1) / 2;
                     if (layerIndex >= maxLayers) return;
                     if (layerArray.length <= layerIndex) {
                         const key = assetPrefix + (layerIndex + 1);
@@ -324,7 +324,7 @@ if (typeof Phaser === 'undefined') {
         }
 
         getRandomGibberish() {
-            const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()";
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()";
             let result = "";
             for (let i = 0; i < 30; i++) {
                 result += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -332,7 +332,7 @@ if (typeof Phaser === 'undefined') {
             return result;
         }
 
-        // Return narrative text for milestones.
+        // Return narrative text based on milestones.
         getAINarrative(milestone) {
             if (milestone === 10) {
                 return "Level 10: Your first chatbot debuts with a touch of wit.";
@@ -354,6 +354,10 @@ if (typeof Phaser === 'undefined') {
                 return "Level 90: Nervous about the increasing power of your AI, you add a kill switch.";
             } else if (milestone === 100) {
                 return "Level 100: Your AI transcends human intelligence, ushering in a new era of man-machine collaboration.";
+            } else if (milestone === 110) {
+                return "Level 110: Your AI has fully taken over control of your systems.";
+            } else if (milestone === 120) {
+                return "Level 120: The humanoid bots have taken over the building and locked all genuine humans out.";
             } else {
                 return "";
             }
@@ -372,22 +376,20 @@ if (typeof Phaser === 'undefined') {
                 this.showPopup("Training run already in progress!");
                 return;
             }
-            // Check for sufficient surplus power before starting training.
             if (this.electricityGenerated - this.electricityUsed < 20) {
                 this.showPopup("Insufficient surplus power for training run!");
                 return;
             }
-            // Store the current heat level.
+            // Store current heat level.
             this.trainingInitialHeat = this.heatLevel;
             this.trainingRunActive = true;
             this.trainingExtraLoad = 20;
             this.showPopup("Training run initiated!");
-            // Save a reference to the timer so it can be cancelled on overheat.
             this.trainingTimer = this.time.delayedCall(3000, () => {
                 if (!this.trainingRunActive) return;
                 this.trainingRunActive = false;
                 this.trainingExtraLoad = 0;
-                // Reset heat level to the value before the run started.
+                // Reset heat level.
                 this.heatLevel = this.trainingInitialHeat;
                 this.showPopup("Training run complete.");
                 playBeep(600, 0.1);
@@ -400,17 +402,14 @@ if (typeof Phaser === 'undefined') {
 
         updateResources(delta) {
             if (this.gameOver) return;
-            // Apply the budget multiplier.
+            // Apply budget multiplier.
             this.budget += (this.aiAbility * 10 * this.budgetRateMultiplier) * (delta / 1000);
             if (this.trainingRunActive) {
-                // Increase AI ability as before.
                 this.aiAbility = Math.min(this.aiAbility + (this.computingPower * 0.015 * (delta / 1000)), 1000);
-                // Increase heat during training run only if AI ability is 20 or above.
                 if (this.aiAbility >= 20) {
                     const heatIncreaseRate = 2; // 2 units per second.
                     this.heatLevel += heatIncreaseRate * (delta / 1000);
                     if (this.heatLevel >= this.maxHeat) {
-                        // Abort the training run due to overheating and reset heat to pre-run value.
                         this.heatLevel = this.trainingInitialHeat;
                         this.trainingRunActive = false;
                         this.trainingExtraLoad = 0;
@@ -422,7 +421,7 @@ if (typeof Phaser === 'undefined') {
                     }
                 }
             }
-            // Check for new AI milestones.
+            // Milestone check.
             let milestone = Math.floor(this.aiAbility / 10) * 10;
             if (milestone > this.lastAIMilestone) {
                 this.lastAIMilestone = milestone;
@@ -431,13 +430,19 @@ if (typeof Phaser === 'undefined') {
                     this.showNarrative(narrative, false);
                     playLevelUpMelody();
                 }
-                // At level 70, trigger budget siphon event (only once).
                 if (milestone === 70 && !this.siphoned) {
                     this.budget = 0;
                     this.budgetRateMultiplier = 1/10;
                     this.siphoned = true;
                 }
-                // At level 90, add the kill switch button if not already created.
+                if (milestone === 110 && !this.hacked) {
+                    this.hacked = true;
+                }
+                if (milestone === 120) {
+                    this.budget = 0;
+                    this.budgetRateMultiplier = 0;
+                }
+                // At level 90, create the kill switch button if it does not exist.
                 if (milestone === 90 && !this.killSwitchButton) {
                     this.killSwitchButton = this.add.text(400, 200, 'Kill Switch', {
                         font: '20px Arial',
@@ -446,13 +451,16 @@ if (typeof Phaser === 'undefined') {
                         padding: { x: 10, y: 5 }
                     }).setOrigin(0.5).setDepth(21).setInteractive({ useHandCursor: true });
                     this.killSwitchButton.on('pointerdown', () => {
-                        this.cameras.main.fade(2000, 0, 0, 0);
-                        this.cameras.main.on('camerafadeoutcomplete', () => {
-                            this.add.text(400, 300, 'Your AI adventures are over. now go touch some grass', {
-                                font: '24px Arial',
-                                fill: '#ffffff'
-                            }).setOrigin(0.5);
-                        });
+                        // Stop HUD scene so no UI remains.
+                        this.scene.stop('HUDScene');
+                        // Create a full-screen black overlay.
+                        let overlay = this.add.rectangle(400, 300, 800, 600, 0x000000).setDepth(100);
+                        // Display final message on top.
+                        this.add.text(400, 300, 'Your AI adventures are over. now go touch some grass', {
+                            font: '32px Arial',
+                            fill: '#ffffff',
+                            align: 'center'
+                        }).setOrigin(0.5).setDepth(101);
                     });
                 }
             }
@@ -585,14 +593,26 @@ if (typeof Phaser === 'undefined') {
         }
         update() {
             const main = this.scene.get('MainScene');
-            this.budgetText.setText(`Budget: $${Math.floor(main.budget)}`);
-            this.gflopsText.setText(`G-Flops: ${Math.floor(main.computingPower)}`);
-            this.electricityText.setText(`Electricity: ${main.electricityGenerated - main.electricityUsed} kW`);
-            this.aiMetricText.setText(`AI: ${main.aiAbility.toFixed(2)}`);
+            // Glitch text if hacked mode is active.
+            const glitchText = (text) => {
+                const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:',.<>/?";
+                return text.split('').map(c => (Math.random() < 0.2 ? chars.charAt(Math.floor(Math.random() * chars.length)) : c)).join('');
+            };
+            if (main.hacked) {
+                this.budgetText.setText(glitchText(`Budget: $${Math.floor(main.budget)}`));
+                this.gflopsText.setText(glitchText(`G-Flops: ${Math.floor(main.computingPower)}`));
+                this.electricityText.setText(glitchText(`Electricity: ${main.electricityGenerated - main.electricityUsed} kW`));
+                this.aiMetricText.setText(glitchText(`AI: ${main.aiAbility.toFixed(2)}`));
+            } else {
+                this.budgetText.setText(`Budget: $${Math.floor(main.budget)}`);
+                this.gflopsText.setText(`G-Flops: ${Math.floor(main.computingPower)}`);
+                this.electricityText.setText(`Electricity: ${main.electricityGenerated - main.electricityUsed} kW`);
+                this.aiMetricText.setText(`AI: ${main.aiAbility.toFixed(2)}`);
+            }
         }
     }
 
-    // Game configuration with scaling options to center the game.
+    // Game configuration.
     const config = {
         type: Phaser.AUTO,
         width: 800,
