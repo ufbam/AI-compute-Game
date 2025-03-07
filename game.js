@@ -336,10 +336,12 @@ if (typeof Phaser === 'undefined') {
             });
         }
 
-        updateResources() {
+        // Now accepts delta (in ms) to scale the update.
+        updateResources(delta) {
             this.budget += Math.min(this.aiAbility * 10, 10000);
             if (this.trainingRunActive) {
-                this.aiAbility = Math.min(this.aiAbility + (this.computingPower * 0.2), 1000);
+                // Use delta to ensure a per-second rate; multiplier reduced to 0.02.
+                this.aiAbility = Math.min(this.aiAbility + (this.computingPower * 0.02 * (delta / 1000)), 1000);
             }
             let milestone = Math.floor(this.aiAbility / 10) * 10;
             if (milestone > this.lastAIMilestone) {
@@ -354,7 +356,7 @@ if (typeof Phaser === 'undefined') {
 
         // Update method to call updateResources every frame.
         update(time, delta) {
-            this.updateResources();
+            this.updateResources(delta);
         }
 
         buyBuilding(type) {
