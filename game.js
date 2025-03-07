@@ -444,4 +444,104 @@ if (typeof Phaser === 'undefined') {
                 if (this.buildingCounts.office <= 3) {
                     let key = 'office' + this.buildingCounts.office;
                     let img = this.add.image(400, 300, key).setOrigin(0.5).setDepth(2);
-                    img.setAlph
+                    img.setAlpha(1);
+                    this.officeImages.push(img);
+                }
+            }
+            if (type === 'server_farm') {
+                this.updateLayer('server_farm', 'server', 5, this.serverFarmImages);
+            }
+            if (type === 'solar_panel') {
+                this.updateLayer('solar_panel', 'solar', 7, this.solarPanels);
+            }
+            if (type === 'cooling_system') {
+                this.updateLayer('cooling_system', 'cooling', 3, this.coolingImages);
+            }
+            if (type === 'server_farm' && this.buildingCounts.server_farm === 1) {
+                this.trainingButton.visible = true;
+                this.showNarrative("Great job on building your first server! Now, if you have surplus power, you can 'Initiate Training Run' to boost your AI and income.", false);
+            }
+            this.updateBars();
+        }
+
+        updateBars() {
+            const effectiveUsage = this.electricityUsed + (this.trainingRunActive ? this.trainingExtraLoad : 0);
+            const usageHeight = Math.min(effectiveUsage / this.barMaxElectricity, 1) * 200;
+            this.powerBarUsage.clear();
+            this.powerBarUsage.fillStyle(usageHeight > 0.8 ? 0xff0000 : 0x00ff00, 1);
+            this.powerBarUsage.fillRect(20, 520 - usageHeight, 16, usageHeight);
+            const outputHeight = Math.min(this.electricityGenerated / this.barMaxElectricity, 1) * 200;
+            this.powerBarOutput.clear();
+            this.powerBarOutput.fillStyle(outputHeight > 0.8 ? 0xff0000 : 0x00ff00, 1);
+            this.powerBarOutput.fillRect(40, 520 - outputHeight, 16, outputHeight);
+            const heatHeight = Math.min(this.heatLevel / this.maxHeat, 1) * 200;
+            this.heatBar.clear();
+            this.heatBar.fillStyle(heatHeight > 0.8 ? 0xff0000 : 0xffa500, 1);
+            this.heatBar.fillRect(760, 520 - heatHeight, 16, heatHeight);
+        }
+
+        showTooltip(x, y, text) {
+            if (this.tooltip) this.tooltip.destroy();
+            this.tooltip = this.add.text(x, y, text, { font: '14px Arial', fill: '#ffffff', backgroundColor: '#333333' })
+                .setOrigin(0.5).setDepth(10);
+        }
+
+        hideTooltip() {
+            if (this.tooltip) this.tooltip.destroy();
+            this.tooltip = null;
+        }
+
+        showPopup(message) {
+            const popup = this.add.text(400, 470, message, { // moved red warning box up 10 pixels (from 480 to 470)
+                font: '20px Arial',
+                fill: '#ffffff',
+                backgroundColor: '#ff0000',
+                padding: { x: 10, y: 10 }
+            }).setOrigin(0.5).setDepth(10);
+            this.time.delayedCall(2000, () => popup.destroy());
+        }
+    }
+
+    // HUDScene: displays HUD metrics.
+    class HUDScene extends Phaser.Scene {
+        constructor() {
+            super('HUDScene');
+        }
+        create() {
+            this.add.rectangle(400, 20, 800, 40, 0x333333).setOrigin(0.5).setDepth(9);
+            this.budgetText = this.add.text(70, 15, 'Budget: $10000', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
+            this.gflopsText = this.add.text(320, 15, 'G-Flops: 0', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
+            this.electricityText = this.add.text(570, 15, 'Electricity: 0 kW', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
+            this.aiBox = this.add.rectangle(400, 70, 176, 48, 0x000000)
+                .setStrokeStyle(2, 0x00ff00).setDepth(10);
+            this.aiMetricText = this.add.text(400, 70, 'AI: 0', { font: 'bold 28px Arial', fill: '#00ff00' })
+                .setOrigin(0.5).setDepth(11);
+        }
+        update() {
+            const main = this.scene.get('MainScene');
+            this.budgetText.setText(`Budget: $${Math.floor(main.budget)}`);
+            this.gflopsText.setText(`G-Flops: ${Math.floor(main.computingPower)}`);
+            this.electricityText.setText(`Electricity: ${main.electricityGenerated - main.electricityUsed} kW`);
+            this.aiMetricText.setText(`AI: ${main.aiAbility.toFixed(2)}`);
+        }
+    }
+
+    // Game configuration with scale settings for centering and full screen support.
+    const config = {
+        type: Phaser.AUTO,
+        width: 800,
+        height: 600,
+        scale: {
+            mode: Phaser.Scale.FIT,
+            autoCenter: Phaser.Scale.CENTER_BOTH,
+            // The 'parent' property can be used to tie the game to a specific DOM element.
+            // For example, if you have a <div id="game-container"></div> in your HTML.
+            // parent: 'game-container'
+        },
+        scene: [TitleScene, BootScene, MainScene, HUDScene, NarrativeScene],
+        pixelArt: true,
+        backgroundColor: '#000000'
+    };
+
+    const game = new Phaser.Game(config);
+}
