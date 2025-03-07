@@ -109,7 +109,7 @@ if (typeof Phaser === 'undefined') {
                 align: 'center',
                 wordWrap: { width: 560 }
             }).setOrigin(0.5);
-            // OK button moved up 10 pixels (now at y = 460).
+            // OK button moved up by 10 pixels (now at y = 460).
             this.add.text(400, 460, 'OK', {
                 font: '20px Arial',
                 fill: '#00ff00',
@@ -238,7 +238,7 @@ if (typeof Phaser === 'undefined') {
                 .setOrigin(0.5).setDepth(11);
 
             // --- Initiate Training Run Button ---
-            // Placed at top center, under the AI level box.
+            // Placed at top center, under the AI level box (position (400,130)).
             this.trainingButton = this.add.text(400, 130, 'Initiate Training Run', {
                 font: '16px Arial',
                 fill: '#00ff00',
@@ -279,7 +279,7 @@ if (typeof Phaser === 'undefined') {
                 if (buildingType === 'solar_panel') {
                     const layerIndex = Math.floor((count - 1) / 2);
                     const stage = (count - 1) % 2;
-                    const desiredAlpha = (stage + 1) / 2; // will be 0.5 for first, 1 for second stage.
+                    const desiredAlpha = (stage + 1) / 2; // will be 0.5 or 1.
                     if (layerIndex >= maxLayers) return;
                     if (layerArray.length <= layerIndex) {
                         const key = assetPrefix + (layerIndex + 1);
@@ -492,7 +492,7 @@ if (typeof Phaser === 'undefined') {
         }
 
         showPopup(message) {
-            const popup = this.add.text(400, 470, message, { // moved red warning box up 10 pixels (from 480 to 470)
+            const popup = this.add.text(400, 470, message, { // red warning boxes moved up to y = 470.
                 font: '20px Arial',
                 fill: '#ffffff',
                 backgroundColor: '#ff0000',
@@ -526,17 +526,14 @@ if (typeof Phaser === 'undefined') {
         }
     }
 
-    // Game configuration with scale settings for centering and full screen support.
+    // Game configuration with scaling options to center the game.
     const config = {
         type: Phaser.AUTO,
         width: 800,
         height: 600,
         scale: {
             mode: Phaser.Scale.FIT,
-            autoCenter: Phaser.Scale.CENTER_BOTH,
-            // The 'parent' property can be used to tie the game to a specific DOM element.
-            // For example, if you have a <div id="game-container"></div> in your HTML.
-            // parent: 'game-container'
+            autoCenter: Phaser.Scale.CENTER_BOTH
         },
         scene: [TitleScene, BootScene, MainScene, HUDScene, NarrativeScene],
         pixelArt: true,
