@@ -352,6 +352,11 @@ if (typeof Phaser === 'undefined') {
             this.updateBars();
         }
 
+        // Update method to call updateResources every frame.
+        update(time, delta) {
+            this.updateResources();
+        }
+
         buyBuilding(type) {
             const data = this.buildings[type];
             if (this.budget < data.cost) {
@@ -440,14 +445,6 @@ if (typeof Phaser === 'undefined') {
             this.heatBar.fillRect(760, 520 - heatHeight, 16, heatHeight);
         }
 
-        showNarrative(text, pauseGame = true) {
-            this.scene.launch('NarrativeScene', {
-                text,
-                onClose: () => { if (pauseGame) this.scene.resume(); }
-            });
-            if (pauseGame) this.scene.pause();
-        }
-
         showTooltip(x, y, text) {
             if (this.tooltip) this.tooltip.destroy();
             this.tooltip = this.add.text(x, y, text, {
@@ -505,7 +502,8 @@ if (typeof Phaser === 'undefined') {
         type: Phaser.AUTO,
         width: 800,
         height: 600,
-        scene: [BootScene, TitleScene, MainScene, HUDScene, NarrativeScene],
+        // Order the scenes so that TitleScene appears first.
+        scene: [TitleScene, BootScene, MainScene, HUDScene, NarrativeScene],
         pixelArt: true,
         backgroundColor: '#000000'
     };
