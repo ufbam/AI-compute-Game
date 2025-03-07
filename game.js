@@ -400,19 +400,21 @@ if (typeof Phaser === 'undefined') {
             if (this.trainingRunActive) {
                 // Increase AI ability as before.
                 this.aiAbility = Math.min(this.aiAbility + (this.computingPower * 0.015 * (delta / 1000)), 1000);
-                // --- Increase heat during training run ---
-                const heatIncreaseRate = 10; // Heat units per second (adjust as needed)
-                this.heatLevel += heatIncreaseRate * (delta / 1000);
-                if (this.heatLevel >= this.maxHeat) {
-                    // Cap heat and abort training due to overheating.
-                    this.heatLevel = this.maxHeat;
-                    this.trainingRunActive = false;
-                    this.trainingExtraLoad = 0;
-                    if (this.trainingTimer) {
-                        this.trainingTimer.remove();
+                // --- Increase heat during training run only if AI ability is 20 or above ---
+                if (this.aiAbility >= 20) {
+                    const heatIncreaseRate = 1; // Heat units per second.
+                    this.heatLevel += heatIncreaseRate * (delta / 1000);
+                    if (this.heatLevel >= this.maxHeat) {
+                        // Cap heat and abort training due to overheating.
+                        this.heatLevel = this.maxHeat;
+                        this.trainingRunActive = false;
+                        this.trainingExtraLoad = 0;
+                        if (this.trainingTimer) {
+                            this.trainingTimer.remove();
+                        }
+                        this.showPopup("Training run aborted: Overheating!");
+                        playBeep(400, 0.2);
                     }
-                    this.showPopup("Training run aborted: Overheating!");
-                    playBeep(400, 0.2);
                 }
             }
             // Check for new AI milestones.
