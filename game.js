@@ -221,7 +221,6 @@ if (typeof Phaser === 'undefined') {
             this.powerBarUsage = this.add.graphics().setDepth(11);
             this.powerBarOutput = this.add.graphics().setDepth(11);
             this.heatBar = this.add.graphics().setDepth(11);
-            // (White outline rectangles behind the bars have been removed.)
             this.add.text(28, 540, "Power\nIn/Out", { font: '16px Arial', fill: '#ffffff', align: 'center' })
                 .setOrigin(0.5).setDepth(10);
             this.add.text(768, 540, "Heat", { font: '16px Arial', fill: '#ffffff', align: 'center' })
@@ -247,8 +246,8 @@ if (typeof Phaser === 'undefined') {
             }).setOrigin(0.5).setDepth(21).setInteractive({ useHandCursor: true });
             this.trainingButton.visible = false;
             this.trainingButton.on('pointerdown', () => {
-                // Check for surplus power before starting training run.
-                if (this.electricityGenerated - this.electricityUsed <= 0) {
+                // Require at least 20 surplus power to start a training run.
+                if (this.electricityGenerated - this.electricityUsed < 20) {
                     this.showPopup("Insufficient surplus power for training run!");
                     return;
                 }
@@ -373,15 +372,17 @@ if (typeof Phaser === 'undefined') {
                 this.showPopup("Training run already in progress!");
                 return;
             }
-            // Check for surplus power before starting training.
-            if (this.electricityGenerated - this.electricityUsed <= 0) {
+            // Check for sufficient surplus power before starting training.
+            if (this.electricityGenerated - this.electricityUsed < 20) {
                 this.showPopup("Insufficient surplus power for training run!");
                 return;
             }
             this.trainingRunActive = true;
             this.trainingExtraLoad = 20;
             this.showPopup("Training run initiated!");
-            this.time.delayedCall(3000, () => {
+            // Save a reference to the timer so it can be cancelled on overheat.
+            this.trainingTimer = this.time.delayedCall(3000, () => {
+                if (!this.trainingRunActive) return;
                 this.trainingRunActive = false;
                 this.trainingExtraLoad = 0;
                 this.showPopup("Training run complete.");
@@ -397,8 +398,24 @@ if (typeof Phaser === 'undefined') {
             if (this.gameOver) return;
             this.budget += (this.aiAbility * 10) * (delta / 1000);
             if (this.trainingRunActive) {
+                // Increase AI ability as before.
                 this.aiAbility = Math.min(this.aiAbility + (this.computingPower * 0.015 * (delta / 1000)), 1000);
+                // --- Increase heat during training run ---
+                const heatIncreaseRate = 10; // Heat units per second (adjust as needed)
+                this.heatLevel += heatIncreaseRate * (delta / 1000);
+                if (this.heatLevel >= this.maxHeat) {
+                    // Cap heat and abort training due to overheating.
+                    this.heatLevel = this.maxHeat;
+                    this.trainingRunActive = false;
+                    this.trainingExtraLoad = 0;
+                    if (this.trainingTimer) {
+                        this.trainingTimer.remove();
+                    }
+                    this.showPopup("Training run aborted: Overheating!");
+                    playBeep(400, 0.2);
+                }
             }
+            // Check for new AI milestones.
             let milestone = Math.floor(this.aiAbility / 10) * 10;
             if (milestone > this.lastAIMilestone) {
                 this.lastAIMilestone = milestone;
