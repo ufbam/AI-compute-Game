@@ -1,3 +1,18 @@
+// Create a single shared AudioContext and a helper function to play a beep.
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playBeep(frequency, duration) {
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    oscillator.type = 'sine';
+    oscillator.frequency.value = frequency;
+    oscillator.start();
+    gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    oscillator.stop(audioCtx.currentTime + duration);
+}
+
 if (typeof Phaser === 'undefined') {
     console.error('Phaser is not loaded. Check the script tag in index.html.');
 } else {
@@ -12,8 +27,9 @@ if (typeof Phaser === 'undefined') {
         }
         create() {
             this.add.image(400, 300, 'title').setOrigin(0.5);
-            // When user clicks anywhere, go to BootScene.
+            // When user clicks anywhere, play a beep and go to BootScene.
             this.input.once('pointerdown', () => {
+                playBeep(440, 0.1);
                 this.scene.start('BootScene');
             });
         }
@@ -181,7 +197,10 @@ if (typeof Phaser === 'undefined') {
                 this.add.sprite(item.x, shopY, data.shopSprite)
                     .setScale(0.0625)
                     .setInteractive({ useHandCursor: true })
-                    .on('pointerdown', () => this.buyBuilding(item.type))
+                    .on('pointerdown', () => {
+                        this.buyBuilding(item.type);
+                        playBeep(550, 0.1); // Sound effect on successful purchase.
+                    })
                     .on('pointerover', () => this.showTooltip(item.x, shopY - 80, data.tooltip))
                     .on('pointerout', () => this.hideTooltip())
                     .setDepth(10);
@@ -229,7 +248,7 @@ if (typeof Phaser === 'undefined') {
             // --- Create HUD Top Section ---
             // Background rectangle for top HUD.
             this.add.rectangle(400, 20, 800, 40, 0x333333).setOrigin(0.5).setDepth(9);
-            // Centered top labels shifted 10 pixels further left.
+            // Centered top labels.
             this.budgetText = this.add.text(70, 15, 'Budget: $10000', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
             this.gflopsText = this.add.text(320, 15, 'G-Flops: 0', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
             this.electricityText = this.add.text(570, 15, 'Electricity: 0 kW', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
@@ -249,6 +268,7 @@ if (typeof Phaser === 'undefined') {
             }).setOrigin(0.5).setDepth(10).setInteractive({ useHandCursor: true });
             this.trainingButton.visible = false;
             this.trainingButton.on('pointerdown', () => {
+                playBeep(400, 0.2); // Sound effect for training start.
                 this.initiateTrainingRun();
             });
 
@@ -337,6 +357,7 @@ if (typeof Phaser === 'undefined') {
                 this.trainingRunActive = false;
                 this.trainingExtraLoad = 0;
                 this.showPopup("Training run complete.");
+                playBeep(600, 0.1); // Sound effect for training complete.
             });
         }
 
@@ -345,7 +366,7 @@ if (typeof Phaser === 'undefined') {
             // Scale budget increase over time.
             this.budget += (this.aiAbility * 10) * (delta / 1000);
             if (this.trainingRunActive) {
-                // Use a multiplier of 0.015 (half of 0.03) so that with 1 or 2 servers, a 3-second run raises AI by roughly 1-2.
+                // Use a multiplier of 0.015 so that with 1 or 2 servers, a 3-second run raises AI by roughly 1-2.
                 this.aiAbility = Math.min(this.aiAbility + (this.computingPower * 0.015 * (delta / 1000)), 1000);
             }
             let milestone = Math.floor(this.aiAbility / 10) * 10;
@@ -485,7 +506,7 @@ if (typeof Phaser === 'undefined') {
         create() {
             // Top background rectangle.
             this.add.rectangle(400, 20, 800, 40, 0x333333).setOrigin(0.5).setDepth(9);
-            // Centered top labels shifted 10 pixels further left.
+            // Centered top labels.
             this.budgetText = this.add.text(70, 15, 'Budget: $10000', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
             this.gflopsText = this.add.text(320, 15, 'G-Flops: 0', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
             this.electricityText = this.add.text(570, 15, 'Electricity: 0 kW', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
