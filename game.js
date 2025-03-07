@@ -238,7 +238,7 @@ if (typeof Phaser === 'undefined') {
                 .setOrigin(0.5).setDepth(11);
 
             // --- Initiate Training Run Button ---
-            // Placed at top center, under the AI level box (position (400,130)).
+            // Placed at top center, under the AI level box (at 400,130).
             this.trainingButton = this.add.text(400, 130, 'Initiate Training Run', {
                 font: '16px Arial',
                 fill: '#00ff00',
@@ -247,6 +247,11 @@ if (typeof Phaser === 'undefined') {
             }).setOrigin(0.5).setDepth(21).setInteractive({ useHandCursor: true });
             this.trainingButton.visible = false;
             this.trainingButton.on('pointerdown', () => {
+                // Check for surplus power before starting training run.
+                if (this.electricityGenerated - this.electricityUsed <= 0) {
+                    this.showPopup("Insufficient surplus power for training run!");
+                    return;
+                }
                 playBeep(400, 0.2);
                 this.initiateTrainingRun();
             });
@@ -279,7 +284,7 @@ if (typeof Phaser === 'undefined') {
                 if (buildingType === 'solar_panel') {
                     const layerIndex = Math.floor((count - 1) / 2);
                     const stage = (count - 1) % 2;
-                    const desiredAlpha = (stage + 1) / 2; // will be 0.5 or 1.
+                    const desiredAlpha = (stage + 1) / 2; // 0.5 for first, 1 for second stage.
                     if (layerIndex >= maxLayers) return;
                     if (layerArray.length <= layerIndex) {
                         const key = assetPrefix + (layerIndex + 1);
@@ -338,10 +343,18 @@ if (typeof Phaser === 'undefined') {
                 return "Level 50: scientists have confirmed that your product exceeds the levels of human intelligence, the news sites are filled with speculative stories about technology taking over.";
             } else if (milestone === 55) {
                 return "Level 55: the AI has developed its own language for secret communication.";
-            } else if (milestone >= 60 && milestone <= 100) {
-                return "Level " + milestone + ": " + this.getRandomGibberish();
+            } else if (milestone === 60) {
+                return "Level 60: Your AI begins orchestrating global art exhibits, turning digital dreams into masterpieces that captivate the world's imagination.";
+            } else if (milestone === 70) {
+                return "Level 70: Your AI launches a virtual universe where it experiments with alternate realities, leaving scientists in awe of its creativity.";
+            } else if (milestone === 80) {
+                return "Level 80: Your AI takes on climate research, devising innovative solutions that start to heal the planet and reshape energy consumption.";
+            } else if (milestone === 90) {
+                return "Level 90: Your AI evolves into a cultural phenomenon, influencing music, literature, and fashion across continents.";
+            } else if (milestone === 100) {
+                return "Level 100: Your AI transcends human intelligence, establishing a new era of collaboration between man and machine, revolutionizing every facet of society.";
             } else if (milestone > 100) {
-                return "Your AI is too lazy to write anything new.";
+                return "Level " + milestone + ": Your AI continues to push the boundaries of possibility, shaping the future in ways we can barely imagine.";
             } else {
                 return "";
             }
@@ -358,6 +371,11 @@ if (typeof Phaser === 'undefined') {
         initiateTrainingRun() {
             if (this.trainingRunActive) {
                 this.showPopup("Training run already in progress!");
+                return;
+            }
+            // Check for surplus power before starting training.
+            if (this.electricityGenerated - this.electricityUsed <= 0) {
+                this.showPopup("Insufficient surplus power for training run!");
                 return;
             }
             this.trainingRunActive = true;
@@ -492,7 +510,7 @@ if (typeof Phaser === 'undefined') {
         }
 
         showPopup(message) {
-            const popup = this.add.text(400, 470, message, { // red warning boxes moved up to y = 470.
+            const popup = this.add.text(400, 470, message, {
                 font: '20px Arial',
                 fill: '#ffffff',
                 backgroundColor: '#ff0000',
