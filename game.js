@@ -109,7 +109,7 @@ if (typeof Phaser === 'undefined') {
                 align: 'center',
                 wordWrap: { width: 560 }
             }).setOrigin(0.5);
-            // OK button moved up by 10 pixels (now at y = 460).
+            // OK button (positioned near the bottom).
             this.add.text(400, 460, 'OK', {
                 font: '20px Arial',
                 fill: '#00ff00',
@@ -151,9 +151,9 @@ if (typeof Phaser === 'undefined') {
             this.lastAIMilestone = 0;
             this.firstTrainingRunCompleted = false;
             this.gameOver = false;
-            this.hacked = false;   // Flag for level 110 event.
-            this.siphoned = false; // Flag to ensure budget-siphon event triggers only once.
+            this.siphoned = false; // Ensure level 70 event triggers only once.
             this.budgetRateMultiplier = 1; // Default multiplier.
+            this.killSwitchButton = null; // Will hold the kill switch button.
 
             // Building definitions.
             this.buildings = {
@@ -332,8 +332,7 @@ if (typeof Phaser === 'undefined') {
             return result;
         }
 
-        // getAINarrative returns narrative text for specific milestones.
-        // Narratives for levels above 100 (except 110) are removed.
+        // Return narrative text for milestones.
         getAINarrative(milestone) {
             if (milestone === 10) {
                 return "Level 10: Your first chatbot debuts with a touch of wit.";
@@ -350,20 +349,11 @@ if (typeof Phaser === 'undefined') {
             } else if (milestone === 60) {
                 return "Level 60: Your AI orchestrates global art exhibits, turning digital dreams into masterpieces.";
             } else if (milestone === 70) {
-                // Instead of the old level 70 narrative, trigger the budget-siphon event.
-                if (!this.siphoned) {
-                    this.siphoned = true;
-                    this.budgetRateMultiplier = 1/3;
-                }
-                return "Level 70: Your AI is siphoning off funds from your budget, cutting its growth rate by two thirds for the rest of the game.";
-            } else if (milestone === 80) {
-                return "Level 80: Your AI takes on climate research, devising innovative solutions for energy consumption.";
+                return "Level 70: The AI has learnt to syphon funds from your bank without trace, using them to achieve its goals.";
             } else if (milestone === 90) {
-                return "Level 90: Your AI evolves into a cultural phenomenon, influencing music, literature, and fashion.";
+                return "Level 90: Nervous about the increasing power of your AI, you add a kill switch.";
             } else if (milestone === 100) {
                 return "Level 100: Your AI transcends human intelligence, ushering in a new era of man-machine collaboration.";
-            } else if (milestone === 110) {
-                return "Level 110: Your AI has fully taken over control of your systems.";
             } else {
                 return "";
             }
@@ -410,14 +400,14 @@ if (typeof Phaser === 'undefined') {
 
         updateResources(delta) {
             if (this.gameOver) return;
-            // Use the budgetRateMultiplier when increasing the budget.
+            // Apply the budget multiplier.
             this.budget += (this.aiAbility * 10 * this.budgetRateMultiplier) * (delta / 1000);
             if (this.trainingRunActive) {
                 // Increase AI ability as before.
                 this.aiAbility = Math.min(this.aiAbility + (this.computingPower * 0.015 * (delta / 1000)), 1000);
                 // Increase heat during training run only if AI ability is 20 or above.
                 if (this.aiAbility >= 20) {
-                    const heatIncreaseRate = 2; // 2 units per second now.
+                    const heatIncreaseRate = 2; // 2 units per second.
                     this.heatLevel += heatIncreaseRate * (delta / 1000);
                     if (this.heatLevel >= this.maxHeat) {
                         // Abort the training run due to overheating and reset heat to pre-run value.
@@ -441,9 +431,29 @@ if (typeof Phaser === 'undefined') {
                     this.showNarrative(narrative, false);
                     playLevelUpMelody();
                 }
-                // At level 110, trigger hacked mode (UI glitches) if not already active.
-                if (milestone === 110 && !this.hacked) {
-                    this.hacked = true;
+                // At level 70, trigger budget siphon event (only once).
+                if (milestone === 70 && !this.siphoned) {
+                    this.budget = 0;
+                    this.budgetRateMultiplier = 1/10;
+                    this.siphoned = true;
+                }
+                // At level 90, add the kill switch button if not already created.
+                if (milestone === 90 && !this.killSwitchButton) {
+                    this.killSwitchButton = this.add.text(400, 200, 'Kill Switch', {
+                        font: '20px Arial',
+                        fill: '#ff0000',
+                        backgroundColor: '#000000',
+                        padding: { x: 10, y: 5 }
+                    }).setOrigin(0.5).setDepth(21).setInteractive({ useHandCursor: true });
+                    this.killSwitchButton.on('pointerdown', () => {
+                        this.cameras.main.fade(2000, 0, 0, 0);
+                        this.cameras.main.on('camerafadeoutcomplete', () => {
+                            this.add.text(400, 300, 'Your AI adventures are over. now go touch some grass', {
+                                font: '24px Arial',
+                                fill: '#ffffff'
+                            }).setOrigin(0.5);
+                        });
+                    });
                 }
             }
             if (!this.gameOver && this.budget <= 0 && this.buildingCounts.server_farm === 0) {
@@ -575,23 +585,10 @@ if (typeof Phaser === 'undefined') {
         }
         update() {
             const main = this.scene.get('MainScene');
-            // If hacked mode is active, glitch the displayed text.
-            const glitchText = (text) => {
-                const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:',.<>/?";
-                return text.split('').map(c => (Math.random() < 0.2 ? chars.charAt(Math.floor(Math.random() * chars.length)) : c)).join('');
-            };
-
-            if (main.hacked) {
-                this.budgetText.setText(glitchText(`Budget: $${Math.floor(main.budget)}`));
-                this.gflopsText.setText(glitchText(`G-Flops: ${Math.floor(main.computingPower)}`));
-                this.electricityText.setText(glitchText(`Electricity: ${main.electricityGenerated - main.electricityUsed} kW`));
-                this.aiMetricText.setText(glitchText(`AI: ${main.aiAbility.toFixed(2)}`));
-            } else {
-                this.budgetText.setText(`Budget: $${Math.floor(main.budget)}`);
-                this.gflopsText.setText(`G-Flops: ${Math.floor(main.computingPower)}`);
-                this.electricityText.setText(`Electricity: ${main.electricityGenerated - main.electricityUsed} kW`);
-                this.aiMetricText.setText(`AI: ${main.aiAbility.toFixed(2)}`);
-            }
+            this.budgetText.setText(`Budget: $${Math.floor(main.budget)}`);
+            this.gflopsText.setText(`G-Flops: ${Math.floor(main.computingPower)}`);
+            this.electricityText.setText(`Electricity: ${main.electricityGenerated - main.electricityUsed} kW`);
+            this.aiMetricText.setText(`AI: ${main.aiAbility.toFixed(2)}`);
         }
     }
 
