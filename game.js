@@ -2,41 +2,25 @@ if (typeof Phaser === 'undefined') {
     console.error('Phaser is not loaded. Check the script tag in index.html.');
 } else {
 
-    // Narrative popup scene.
-    class NarrativeScene extends Phaser.Scene {
+    // Title scene: shows title.png until user clicks.
+    class TitleScene extends Phaser.Scene {
         constructor() {
-            super('NarrativeScene');
+            super('TitleScene');
         }
-        init(data) {
-            this.text = data.text;
-            this.onClose = data.onClose;
+        preload() {
+            this.load.image('title', 'assets/title.png');
         }
         create() {
-            // Narrative box: 600x130, centered at (400,300)
-            this.add.rectangle(400, 300, 600, 130, 0x333333).setOrigin(0.5);
-            this.add.text(400, 300, this.text, {
-                font: '16px Arial',
-                fill: '#ffffff',
-                align: 'center',
-                wordWrap: { width: 560 }
-            }).setOrigin(0.5);
-            // OK button moved down 10 pixels (to y = 470).
-            this.add.text(400, 470, 'OK', {
-                font: '20px Arial',
-                fill: '#00ff00',
-                backgroundColor: '#000000',
-                padding: { x: 15, y: 5 }
-            })
-                .setOrigin(0.5)
-                .setInteractive({ useHandCursor: true })
-                .on('pointerdown', () => {
-                    this.scene.stop();
-                    this.onClose();
-                });
+            // Display the title image centered.
+            this.add.image(400, 300, 'title').setOrigin(0.5);
+            // When the user clicks anywhere, start the Main Game.
+            this.input.once('pointerdown', () => {
+                this.scene.start('MainScene');
+            });
         }
     }
 
-    // Boot scene for preloading assets.
+    // Boot scene: preload all assets.
     class BootScene extends Phaser.Scene {
         constructor() {
             super('BootScene');
@@ -45,7 +29,7 @@ if (typeof Phaser === 'undefined') {
             // Background & shop icons.
             this.load.image('desert_backdrop', 'assets/desert_backdrop.png');
             this.load.image('office_high', 'assets/office_high.png');
-            this.load.image('server_rack_high', 'assets/server_rack_high.png'); // Shop icon for server farm.
+            this.load.image('server_rack_high', 'assets/server_rack_high.png'); // for server farm shop icon
             this.load.image('solar_panel_high', 'assets/solar_panel_high.png');
             this.load.image('cooling_system_high', 'assets/cooling_system_high.png');
 
@@ -74,7 +58,8 @@ if (typeof Phaser === 'undefined') {
             this.load.image('cooling3', 'assets/cooling3.png');
         }
         create() {
-            this.scene.start('MainScene');
+            // Once assets are loaded, start the Title Scene.
+            this.scene.start('TitleScene');
         }
     }
 
@@ -141,7 +126,7 @@ if (typeof Phaser === 'undefined') {
                 }
             };
 
-            // Initialize purchase counts and display texts.
+            // Initialize purchase counts and displays.
             this.buildingCounts = {
                 office: 0,
                 server_farm: 0,
@@ -183,7 +168,7 @@ if (typeof Phaser === 'undefined') {
             });
 
             // --- Create Resource Bars ---
-            // Using simple rectangular bars.
+            // Simple rectangular bars.
             this.powerBarUsage = this.add.graphics().setDepth(11);
             this.powerBarOutput = this.add.graphics().setDepth(11);
             this.heatBar = this.add.graphics().setDepth(11);
@@ -206,12 +191,12 @@ if (typeof Phaser === 'undefined') {
                 .setOrigin(0.5).setDepth(10);
 
             // --- Create HUD Top Section ---
-            // Coloured rectangle background.
+            // Background rectangle for top HUD.
             this.add.rectangle(400, 20, 800, 40, 0x333333).setOrigin(0.5).setDepth(9);
-            // Center the top labels, shifted 50 pixels left.
-            this.budgetText = this.add.text(80, 15, 'Budget: $10000', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
-            this.gflopsText = this.add.text(330, 15, 'G-Flops: 0', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
-            this.electricityText = this.add.text(580, 15, 'Electricity: 0 kW', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
+            // Centered labels shifted an additional 10 pixels left.
+            this.budgetText = this.add.text(70, 15, 'Budget: $10000', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
+            this.gflopsText = this.add.text(320, 15, 'G-Flops: 0', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
+            this.electricityText = this.add.text(570, 15, 'Electricity: 0 kW', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
             // AI metric box.
             this.aiBox = this.add.rectangle(400, 70, 176, 48, 0x000000)
                 .setStrokeStyle(2, 0x00ff00).setDepth(10);
@@ -232,7 +217,7 @@ if (typeof Phaser === 'undefined') {
             });
 
             // Opening narrative.
-            this.showNarrative("Welcome to your AI venture! Build offices, server farms, solar panels, and cooling systems to boost your GFlops and increase your AI level. More GFlops mean faster AI growth, and training runs can supercharge your progress. Get started and watch your digital brain evolve!");
+            this.showNarrative("Welcome to your AI venture! Build offices, server farms, solar panels, and cooling systems to boost your GFlops and increase your AI level. More GFlops mean faster AI growth, and training runs can supercharge your progress. Get started and watch your digital brain evolve!", true);
 
             this.lastAIMilestone = 0;
             this.scene.launch('HUDScene');
@@ -296,12 +281,21 @@ if (typeof Phaser === 'undefined') {
             }
         }
 
+        // Modified showNarrative: second parameter decides if the scene should pause.
+        showNarrative(text, pauseGame = true) {
+            this.scene.launch('NarrativeScene', {
+                text,
+                onClose: () => { if (pauseGame) this.scene.resume(); }
+            });
+            if (pauseGame) this.scene.pause();
+        }
+
         initiateTrainingRun() {
             if (this.trainingRunActive) {
                 this.showPopup("Training run already in progress!");
                 return;
             }
-            // Removed surplus power check so training can always be initiated.
+            // Removed surplus power check.
             this.trainingRunActive = true;
             this.trainingExtraLoad = 20;
             this.showPopup("Training run initiated!");
@@ -323,7 +317,8 @@ if (typeof Phaser === 'undefined') {
                 this.lastAIMilestone = milestone;
                 let narrative = this.getAINarrative(milestone);
                 if (narrative) {
-                    this.showNarrative(narrative);
+                    // For AI milestone narratives, do not pause the scene.
+                    this.showNarrative(narrative, false);
                 }
             }
             this.updateBars();
@@ -393,7 +388,8 @@ if (typeof Phaser === 'undefined') {
             // Reveal training button when the first server farm is built.
             if (type === 'server_farm' && this.buildingCounts.server_farm === 1) {
                 this.trainingButton.visible = true;
-                this.showNarrative("Great job on building your first server! Now, if you have surplus power, you can 'Initiate Training Run' to boost your AI and income.");
+                // Show the narrative without pausing the scene.
+                this.showNarrative("Great job on building your first server! Now, if you have surplus power, you can 'Initiate Training Run' to boost your AI and income.", false);
             }
 
             this.updateBars();
@@ -417,12 +413,12 @@ if (typeof Phaser === 'undefined') {
             this.heatBar.fillRect(760, 520 - heatHeight, 16, heatHeight);
         }
 
-        showNarrative(text) {
+        showNarrative(text, pauseGame = true) {
             this.scene.launch('NarrativeScene', {
                 text,
-                onClose: () => this.scene.resume()
+                onClose: () => { if (pauseGame) this.scene.resume(); }
             });
-            this.scene.pause();
+            if (pauseGame) this.scene.pause();
         }
 
         showTooltip(x, y, text) {
@@ -458,10 +454,10 @@ if (typeof Phaser === 'undefined') {
         create() {
             // Top background rectangle.
             this.add.rectangle(400, 20, 800, 40, 0x333333).setOrigin(0.5).setDepth(9);
-            // Centered top labels shifted 50 pixels left.
-            this.budgetText = this.add.text(80, 15, 'Budget: $10000', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
-            this.gflopsText = this.add.text(330, 15, 'G-Flops: 0', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
-            this.electricityText = this.add.text(580, 15, 'Electricity: 0 kW', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
+            // Centered top labels shifted 10 pixels further left.
+            this.budgetText = this.add.text(70, 15, 'Budget: $10000', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
+            this.gflopsText = this.add.text(320, 15, 'G-Flops: 0', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
+            this.electricityText = this.add.text(570, 15, 'Electricity: 0 kW', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
             // AI metric box.
             this.aiBox = this.add.rectangle(400, 70, 176, 48, 0x000000)
                 .setStrokeStyle(2, 0x00ff00).setDepth(10);
@@ -482,10 +478,28 @@ if (typeof Phaser === 'undefined') {
         type: Phaser.AUTO,
         width: 800,
         height: 600,
-        scene: [BootScene, MainScene, HUDScene, NarrativeScene],
+        scene: [BootScene, TitleScene, MainScene, HUDScene, NarrativeScene],
         pixelArt: true,
         backgroundColor: '#000000'
     };
+
+    // Add TitleScene to our list.
+    class TitleScene extends Phaser.Scene {
+        constructor() {
+            super('TitleScene');
+        }
+        preload() {
+            this.load.image('title', 'assets/title.png');
+        }
+        create() {
+            // Show the title screen.
+            this.add.image(400, 300, 'title').setOrigin(0.5);
+            // Wait for user input to continue.
+            this.input.once('pointerdown', () => {
+                this.scene.start('MainScene');
+            });
+        }
+    }
 
     const game = new Phaser.Game(config);
 }
