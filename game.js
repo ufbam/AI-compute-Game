@@ -12,7 +12,7 @@ if (typeof Phaser === 'undefined') {
         }
         create() {
             this.add.image(400, 300, 'title').setOrigin(0.5);
-            // Wait for a click to start the BootScene.
+            // When user clicks anywhere, go to BootScene.
             this.input.once('pointerdown', () => {
                 this.scene.start('BootScene');
             });
@@ -61,6 +61,40 @@ if (typeof Phaser === 'undefined') {
         }
     }
 
+    // NarrativeScene: used for instructional pop-ups.
+    class NarrativeScene extends Phaser.Scene {
+        constructor() {
+            super('NarrativeScene');
+        }
+        init(data) {
+            this.text = data.text;
+            this.onClose = data.onClose;
+        }
+        create() {
+            // Narrative box: 600x130 centered at (400,300)
+            this.add.rectangle(400, 300, 600, 130, 0x333333).setOrigin(0.5);
+            this.add.text(400, 300, this.text, {
+                font: '16px Arial',
+                fill: '#ffffff',
+                align: 'center',
+                wordWrap: { width: 560 }
+            }).setOrigin(0.5);
+            // OK button moved down to y = 470.
+            this.add.text(400, 470, 'OK', {
+                font: '20px Arial',
+                fill: '#00ff00',
+                backgroundColor: '#000000',
+                padding: { x: 15, y: 5 }
+            })
+                .setOrigin(0.5)
+                .setInteractive({ useHandCursor: true })
+                .on('pointerdown', () => {
+                    this.scene.stop();
+                    this.onClose();
+                });
+        }
+    }
+
     // MainScene: main game logic.
     class MainScene extends Phaser.Scene {
         constructor() {
@@ -79,7 +113,8 @@ if (typeof Phaser === 'undefined') {
             this.heatLevel = 0;
             this.maxHeat = 100;
             this.maxElectricity = 100;
-            this.barMaxElectricity = 200; // Lower threshold so bars grow more easily.
+            // Lower threshold so power bars grow more easily.
+            this.barMaxElectricity = 200;
             this.barMaxHeat = 100;
 
             this.offices = 0;
@@ -165,7 +200,7 @@ if (typeof Phaser === 'undefined') {
             });
 
             // --- Create Resource Bars ---
-            // Use simple rectangular bars.
+            // Simple rectangular bars.
             this.powerBarUsage = this.add.graphics().setDepth(11);
             this.powerBarOutput = this.add.graphics().setDepth(11);
             this.heatBar = this.add.graphics().setDepth(11);
@@ -183,21 +218,20 @@ if (typeof Phaser === 'undefined') {
                 .setOrigin(0, 1)
                 .setStrokeStyle(2, 0xffffff)
                 .setDepth(10);
-            // Left power bar label: two lines ("Power" then "In/Out").
+            // Left power bar label: two lines ("Power" and "In/Out").
             this.add.text(28, 540, "Power\nIn/Out", { font: '16px Arial', fill: '#ffffff', align: 'center' })
                 .setOrigin(0.5).setDepth(10);
 
             // --- Create HUD Top Section ---
-            // Background rectangle for the top HUD.
+            // Background rectangle for top HUD.
             this.add.rectangle(400, 20, 800, 40, 0x333333).setOrigin(0.5).setDepth(9);
-            // Centered labels shifted an extra 10 pixels left.
+            // Centered top labels shifted 10 pixels further left.
             this.budgetText = this.add.text(70, 15, 'Budget: $10000', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
             this.gflopsText = this.add.text(320, 15, 'G-Flops: 0', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
             this.electricityText = this.add.text(570, 15, 'Electricity: 0 kW', { font: '22px Arial', fill: '#ffffff', align: 'center' }).setDepth(10);
             // AI metric box.
             this.aiBox = this.add.rectangle(400, 70, 176, 48, 0x000000)
-                .setStrokeStyle(2, 0x00ff00)
-                .setDepth(10);
+                .setStrokeStyle(2, 0x00ff00).setDepth(10);
             this.aiMetricText = this.add.text(400, 70, 'AI: 0', { font: 'bold 28px Arial', fill: '#00ff00' })
                 .setOrigin(0.5).setDepth(11);
 
@@ -214,7 +248,7 @@ if (typeof Phaser === 'undefined') {
                 this.initiateTrainingRun();
             });
 
-            // Show the opening narrative.
+            // Opening narrative.
             this.showNarrative("Welcome to your AI venture! Build offices, server farms, solar panels, and cooling systems to boost your GFlops and increase your AI level. More GFlops mean faster AI growth, and training runs can supercharge your progress. Get started and watch your digital brain evolve!", true);
 
             this.lastAIMilestone = 0;
@@ -292,7 +326,6 @@ if (typeof Phaser === 'undefined') {
                 this.showPopup("Training run already in progress!");
                 return;
             }
-            // Removed surplus power check.
             this.trainingRunActive = true;
             this.trainingExtraLoad = 20;
             this.showPopup("Training run initiated!");
