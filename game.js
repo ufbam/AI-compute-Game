@@ -249,7 +249,7 @@ if (typeof Phaser === 'undefined') {
             });
 
             // Opening narrative.
-            this.showNarrative("Welcome to your AI venture! Build offices, server farms, solar panels, and cooling systems to boost your GFlops and increase your AI level. More GFlops mean faster AI growth, and training runs can supercharge your progress. Get started and watch your digital brain evolve!", true);
+            this.showNarrative("Welcome to your AI venture! Build offices, server farms, solar panels, and cooling systems to boost your G-Flops and increase your AI level. More G-Flops mean faster AI growth, and training runs can supercharge your progress. Get started and watch your digital brain evolve!", true);
 
             this.lastAIMilestone = 0;
             this.scene.launch('HUDScene');
