@@ -8,7 +8,8 @@ function playBeep(frequency, duration) {
     oscillator.type = 'sine';
     oscillator.frequency.value = frequency;
     oscillator.start();
-    gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
+    // Set gain to one third of its original value.
+    gainNode.gain.setValueAtTime(0.33, audioCtx.currentTime);
     gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
     oscillator.stop(audioCtx.currentTime + duration);
 }
@@ -184,13 +185,14 @@ if (typeof Phaser === 'undefined') {
             this.purchaseTexts = {};
 
             // --- Create the Shop UI ---
+            // Shift shop items five pixels to the right.
             const shopY = 530;
             this.add.rectangle(400, shopY + 50, 800, 140, 0x333333).setOrigin(0.5).setDepth(10);
             const shopItems = [
-                { type: 'office', x: 150 },
-                { type: 'server_farm', x: 300 },
-                { type: 'solar_panel', x: 450 },
-                { type: 'cooling_system', x: 600 }
+                { type: 'office', x: 155 },
+                { type: 'server_farm', x: 305 },
+                { type: 'solar_panel', x: 455 },
+                { type: 'cooling_system', x: 605 }
             ];
             shopItems.forEach(item => {
                 const data = this.buildings[item.type];
