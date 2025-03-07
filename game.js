@@ -336,12 +336,13 @@ if (typeof Phaser === 'undefined') {
             });
         }
 
-        // Now accepts delta (in ms) to scale the update.
+        // Update resources; delta is in milliseconds.
         updateResources(delta) {
-            this.budget += Math.min(this.aiAbility * 10, 10000);
+            // Scale budget increase over time.
+            this.budget += (this.aiAbility * 10) * (delta / 1000);
             if (this.trainingRunActive) {
-                // Use delta to ensure a per-second rate; multiplier reduced to 0.02.
-                this.aiAbility = Math.min(this.aiAbility + (this.computingPower * 0.02 * (delta / 1000)), 1000);
+                // Use a multiplier of 0.03 so that with 1 or 2 servers, a 3-second run raises AI to roughly 1-2.
+                this.aiAbility = Math.min(this.aiAbility + (this.computingPower * 0.03 * (delta / 1000)), 1000);
             }
             let milestone = Math.floor(this.aiAbility / 10) * 10;
             if (milestone > this.lastAIMilestone) {
