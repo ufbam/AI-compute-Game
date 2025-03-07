@@ -109,8 +109,8 @@ if (typeof Phaser === 'undefined') {
                 align: 'center',
                 wordWrap: { width: 560 }
             }).setOrigin(0.5);
-            // OK button at y = 470.
-            this.add.text(400, 470, 'OK', {
+            // OK button moved up by 10 pixels (now at y = 460).
+            this.add.text(400, 460, 'OK', {
                 font: '20px Arial',
                 fill: '#00ff00',
                 backgroundColor: '#000000',
@@ -221,8 +221,7 @@ if (typeof Phaser === 'undefined') {
             this.powerBarUsage = this.add.graphics().setDepth(11);
             this.powerBarOutput = this.add.graphics().setDepth(11);
             this.heatBar = this.add.graphics().setDepth(11);
-            // (White outline rectangles behind the bars have been removed.)
-
+            // (Removed white outline rectangles behind the bars.)
             this.add.text(28, 540, "Power\nIn/Out", { font: '16px Arial', fill: '#ffffff', align: 'center' })
                 .setOrigin(0.5).setDepth(10);
             this.add.text(768, 540, "Heat", { font: '16px Arial', fill: '#ffffff', align: 'center' })
@@ -239,7 +238,7 @@ if (typeof Phaser === 'undefined') {
                 .setOrigin(0.5).setDepth(11);
 
             // --- Initiate Training Run Button ---
-            // Moved to top center, under the AI level box at (400,130).
+            // Moved to the top center, under the AI box at (400,130).
             this.trainingButton = this.add.text(400, 130, 'Initiate Training Run', {
                 font: '16px Arial',
                 fill: '#00ff00',
@@ -274,11 +273,10 @@ if (typeof Phaser === 'undefined') {
             this.coolingImages = [];
 
             // --- updateLayer Helper ---
-            // For solar panels, fade in in two stages.
+            // For solar panels, use a two-stage fade: first purchase alpha = 0.5, second alpha = 1.
             this.updateLayer = (buildingType, assetPrefix, maxLayers, layerArray) => {
                 const count = this.buildingCounts[buildingType];
                 if (buildingType === 'solar_panel') {
-                    // Two-stage fade: first stage alpha = 0.5, second stage alpha = 1.
                     const layerIndex = Math.floor((count - 1) / 2);
                     const stage = (count - 1) % 2;
                     const desiredAlpha = (stage + 1) / 2; // 0.5 or 1.
@@ -297,7 +295,6 @@ if (typeof Phaser === 'undefined') {
                         });
                     }
                 } else {
-                    // Default three-stage fade.
                     const layerIndex = Math.floor((count - 1) / 3);
                     const stage = (count - 1) % 3;
                     const desiredAlpha = (stage + 1) / 3;
@@ -334,11 +331,13 @@ if (typeof Phaser === 'undefined') {
             } else if (milestone === 20) {
                 return "Level 20: Government offices start outsourcing their dull tasks to your AI.";
             } else if (milestone === 30) {
-                return "Level 30: Your AI begins crafting catchy slogans and clever quips.";
+                return "Level 30: your AI generates a million images a day, confusing social media users as to what is real.";
             } else if (milestone === 40) {
-                return "Level 40: Humanoid robots now showcase your AI's sharp insights.";
+                return "Level 40: your real world AI inference engine is installed in humanoid robots that begin working your factories.";
             } else if (milestone === 50) {
-                return "Level 50: Rumors hint that your AI is nearing true intelligence.";
+                return "Level 50: scientists have confirmed that your product exceeds the levels of human intelligence, the news sites are filled with speculative stories about technology taking over.";
+            } else if (milestone === 55) {
+                return "Level 55: the AI has developed its own language for secret communication.";
             } else if (milestone >= 60 && milestone <= 100) {
                 return "Level " + milestone + ": " + this.getRandomGibberish();
             } else if (milestone > 100) {
@@ -493,7 +492,7 @@ if (typeof Phaser === 'undefined') {
         }
 
         showPopup(message) {
-            const popup = this.add.text(400, 480, message, {
+            const popup = this.add.text(400, 470, message, { // moved up 10 pixels from 480 to 470.
                 font: '20px Arial',
                 fill: '#ffffff',
                 backgroundColor: '#ff0000',
