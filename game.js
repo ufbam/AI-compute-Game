@@ -189,10 +189,9 @@ if (typeof Phaser === 'undefined') {
             this.purchaseTexts = {};
 
             // --- Shop UI ---
-            // Draw the shop panel at depth 10.
             const shopY = 530;
             this.add.rectangle(400, shopY + 50, 800, 140, 0x333333).setOrigin(0.5).setDepth(10);
-            // Shop items are shifted another five pixels to the right.
+            // Shift shop items another five pixels to the right.
             const shopItems = [
                 { type: 'office', x: 160 },
                 { type: 'server_farm', x: 310 },
@@ -220,13 +219,11 @@ if (typeof Phaser === 'undefined') {
             });
 
             // --- Resource Bars ---
-            // Create simple bars at depth 11.
             this.powerBarUsage = this.add.graphics().setDepth(11);
             this.powerBarOutput = this.add.graphics().setDepth(11);
             this.heatBar = this.add.graphics().setDepth(11);
             // (Removed white outline rectangles behind the bars.)
 
-            // Labels for the bars.
             this.add.text(28, 540, "Power\nIn/Out", { font: '16px Arial', fill: '#ffffff', align: 'center' })
                 .setOrigin(0.5).setDepth(10);
             this.add.text(768, 540, "Heat", { font: '16px Arial', fill: '#ffffff', align: 'center' })
@@ -243,8 +240,8 @@ if (typeof Phaser === 'undefined') {
                 .setOrigin(0.5).setDepth(11);
 
             // --- Initiate Training Run Button ---
-            // Moved to top right, level with the AI box.
-            this.trainingButton = this.add.text(750, 70, 'Initiate Training Run', {
+            // Placed at the top center under the AI level box (at (400,130)).
+            this.trainingButton = this.add.text(400, 130, 'Initiate Training Run', {
                 font: '16px Arial',
                 fill: '#00ff00',
                 backgroundColor: '#000000',
@@ -257,7 +254,6 @@ if (typeof Phaser === 'undefined') {
             });
 
             // --- Speaker Icon for Mute Control ---
-            // Placed at (10,570) with bright yellow color and depth 20.
             this.soundIcon = this.add.text(10, 570, '🔊', { font: '24px Arial', fill: '#ffff00' })
                 .setInteractive({ useHandCursor: true })
                 .setDepth(20);
@@ -279,14 +275,13 @@ if (typeof Phaser === 'undefined') {
             this.coolingImages = [];
 
             // --- updateLayer Helper ---
-            // For building types other than 'solar_panel', use 3 stages.
-            // For 'solar_panel', use 2 stages.
+            // For "solar_panel", fade in in one step (alpha = 1 immediately).
             this.updateLayer = (buildingType, assetPrefix, maxLayers, layerArray) => {
                 const count = this.buildingCounts[buildingType];
                 if (buildingType === 'solar_panel') {
-                    const layerIndex = Math.floor((count - 1) / 2);
-                    const stage = (count - 1) % 2;
-                    const desiredAlpha = (stage + 1) / 2;
+                    // Use one step fade: each solar panel is added with full opacity.
+                    const layerIndex = count - 1; // each purchase creates its own image
+                    const desiredAlpha = 1;
                     if (layerIndex >= maxLayers) return;
                     if (layerArray.length <= layerIndex) {
                         const key = assetPrefix + (layerIndex + 1);
@@ -295,11 +290,7 @@ if (typeof Phaser === 'undefined') {
                         layerArray.push(img);
                     } else {
                         let img = layerArray[layerIndex];
-                        this.tweens.add({
-                            targets: img,
-                            alpha: desiredAlpha,
-                            duration: 1000
-                        });
+                        img.setAlpha(desiredAlpha);
                     }
                 } else {
                     const layerIndex = Math.floor((count - 1) / 3);
